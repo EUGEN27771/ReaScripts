@@ -1,0 +1,58 @@
+//=Script sets a fixed scale Horizontally(in Bars) and Vertically(Low_Pitch-Hi_Pitch OR to Content if it exists)
+//=Set the desired View Range in THIS SECTION for comfortable operation=//
+Low_Pitch = 36;//======Low Note(Bottom line)
+Hi_Pitch = 48;//=======Hi Note(Upper line)
+Zoom_In_Bars = 2;//====Set Zoom_In_Bars for Zoom_Rang(for example 1,2,4 etc)
+Start_Zoom_Flag = 1;//=FLAG(Start-View Point) : 0=Cursor_Pos(if possible),1=Meas_Start
+//========================//
+function Set_View()
+(
+ PreventUIRefresh(1);//PreventUIRefresh
+ Undo_BeginBlock();//For Undo
+ //====================================================================================//
+ Take = MIDIEditor_GetTake(ME);//Get opened in ME Take
+ Item = GetMediaItemTake_Item(Take);//Get Take parent Item
+ Note_Chan = MIDIEditor_GetSetting_int(ME, "default_note_chan");//Get Default Note Chan 
+    //========================//
+   Cursor_Pos_QN = TimeMap_timeToQN(GetCursorPosition());//Get Cursor Pos(in QN)
+   Item_Pos_QN = TimeMap_timeToQN(GetMediaItemInfo_Value(Item, "D_POSITION"));//Get Item Position(in QN)
+   (Cursor_Pos_QN - Item_Pos_QN) > 0 ? First_Bar_QN = Cursor_Pos_QN : First_Bar_QN = Item_Pos_QN;//Set First_Bar
+
+   TimeMap_QNToMeasures(0, First_Bar_QN , Bar_Start_QN , Bar_End_QN );//Get First_Bar Start&End in QN
+   One_Bar_QN = Bar_End_QN - Bar_Start_QN;//Calculate QN in Current Bar
+   Zoom_Range_QN = Zoom_In_Bars*One_Bar_QN;//Calculate Zoom_Range in QN(see Zoom_In_Bars) 
+
+   Start_Zoom_Flag ? Start_Zoom_QN = Bar_Start_QN : Start_Zoom_QN = Cursor_Pos_QN;//Set Start_Zoom Point(see Flag)
+   End_Zoom_QN = Start_Zoom_QN + Zoom_Range_QN;//Calculate End_Zoom Point
+      Start_Zoom = TimeMap_QNToTime(Start_Zoom_QN);//Start_Zoom_QN to Time
+      End_Zoom   = TimeMap_QNToTime(End_Zoom_QN);//End_Zoom_QN to Time
+
+ //===Save User NOTE_Sel & TIME_Sel===//
+ MIDIEditor_OnCommand(ME,NamedCommandLookup("_BR_ME_SAVE_NOTE_SEL_SLOT_1"));//Save User NOTE_Selection
+ GetSet_LoopTimeRange(0,0,User_T_Sel_Start,User_T_Sel_End,0); //Get-Save User TIME_Selection
+ //==Inserting "Marker-Notes" and Time Sel for ZOOM==//
+ MIDI_SelectAll(Take, 0);//UnSel All MIDI-Content
+ MIDI_InsertNote( Take ,1,1, 0, 120, Note_Chan , Low_Pitch ,64,1);//Default values for "Marker-Notes"--see below--
+ MIDI_InsertNote( Take ,1,1, 0, 120, Note_Chan , Hi_Pitch  ,64,1);//sel=1;mute=1;start=0;end=120;vel=64;noSort=1;
+ MIDI_Sort(Take);
+ GetSet_LoopTimeRange(1,0, Start_Zoom , End_Zoom , 0);//Set Time Sel For Zoom
+     //======//Re-Open MIDI-Editor(FOR CORRECT ZOOM)//======//
+     SelectAllMediaItems(0,0);//Unselect All Items in Project
+     SetMediaItemSelected(Item,1);//Select item by ID
+     Main_OnCommand(40153, 0); //MAIN section action "open selected item in MIDI editor" 
+ //==Zoom==//Warning:IT D0'NT WORK w-out Re-Open MIDI-Editor--see above--^^^!!!!!!!
+ ME = MIDIEditor_GetActive();//Re-Get Active MIDI Editor
+ MIDIEditor_OnCommand(ME,40466);//Zoom to content(IN Real-Verticaly)
+ MIDIEditor_OnCommand(ME,40726);//Zoom to Time Sel(IN Real-Horizontaly)
+ MIDIEditor_OnCommand(ME,40002);//Del Notes(Delete "Marker-Notes")
+ //==Restore User NOTE_Sel & TIME_Sel===//
+ MIDIEditor_OnCommand(ME,NamedCommandLookup("_BR_ME_RESTORE_NOTE_SEL_SLOT_1"));//Restore Saved NOTE_Selection
+ GetSet_LoopTimeRange(1,0,User_T_Sel_Start,User_T_Sel_End,0); //Restore TIME_Selection
+ //====================================================================================//
+ Undo_EndBlock("~Special DrumMode View~", -1);//End Undo
+ PreventUIRefresh(-1);//PreventUIRefresh
+);//End Function
+
+ME = MIDIEditor_GetActive();//Get Active MIDI Editor
+ME ? Set_View();
+
