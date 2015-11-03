@@ -68,8 +68,8 @@ ActiveTake = GetActiveTake(MediaItem);//Get ActiveTake
               GetSet_LoopTimeRange(1,0, Time_Sel_Start, Time_Sel_End,0););//Set New Time Sel
 //=======================================================================================================//
 TakeIsMIDI(ActiveTake) ? //If ActiveTake is MIDI 
-(GetUserInputs("Change Parameters", 3 , "Change Position,Change Pitch,Change Velocity", #Parameter_Values) ?    //If UserInput "OK" then
-      (match("%i,%i,%i", #Parameter_Values, Move_Notes,Transpose,Add_Velocity);
+(GetUserInputs("Change Parameters(add or subtract)", 3 , "Velocity,Transpose,Position", #Parameter_Values) ? //If UserInput "OK" then
+      (match("%i,%i,%i", #Parameter_Values,Add_Velocity,Transpose,Move_Notes);
        Change_Parameters(););//Extract Velocity and Execuate Function          
  );
 
