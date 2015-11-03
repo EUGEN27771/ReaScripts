@@ -1,0 +1,79 @@
+//Change Parameters//
+#Parameter_Values = "0,0,0";//Set Default Values(displayed in the menu)
+VAR_FLAG = 0;// 1 for Notes Start-End in time-Sel; 0 for Notes-Start Only in time-Sel
+function Change_Parameters()
+(Undo_BeginBlock();//Start Undo
+ Time_Sel_Start_PPQ = MIDI_GetPPQPosFromProjTime(ActiveTake, Time_Sel_Start);//Time Sel Start to PPQ
+ Time_Sel_End_PPQ = MIDI_GetPPQPosFromProjTime(ActiveTake, Time_Sel_End);//Time Sel End Start to PPQ
+       //==Get Proj Grid( PPQ )==//
+       Grid_Close = extension_api("BR_GetClosestGridDivision",Time_Sel_Start);//Close(near)
+       Grid_Next  = extension_api("BR_GetNextGridDivision", Grid_Close);//Next after Close
+       Grid_Div_PPQ = MIDI_GetPPQPosFromProjTime(ActiveTake, Grid_Next) - MIDI_GetPPQPosFromProjTime(ActiveTake, Grid_Close);//to PPQ
+
+ FNG_Take = extension_api("FNG_AllocMidiTake", ActiveTake);//Get FNG TAKE
+ FNG_Count_Notes = extension_api("FNG_CountMidiNotes", FNG_Take);//Count_Notes in take
+  //==Select Only Notes In Current Time Selection==//
+ note_index=0;
+ loop(FNG_Count_Notes,
+       FNG_Note_ID = extension_api("FNG_GetMidiNote", FNG_Take, note_index);//GET FNG_Note_ID
+       FNG_Note_Start_PPQ = extension_api("FNG_GetMidiNoteIntProperty", FNG_Note_ID , "POSITION");//note position(PPQ)
+       VAR_FLAG ? FNG_Note_LENGTH_PPQ = extension_api("FNG_GetMidiNoteIntProperty", FNG_Note_ID , "LENGTH");//note lenght(PPQ)-ALSO SEE VAR_FLAG!!!
+         
+         (FNG_Note_Start_PPQ >= Time_Sel_Start_PPQ)&&(FNG_Note_Start_PPQ+FNG_Note_LENGTH_PPQ <= Time_Sel_End_PPQ) ? SEL=1 : SEL=0;//check!!!
+       extension_api("FNG_SetMidiNoteIntProperty", FNG_Note_ID , "SELECTED" , SEL);//Sel-Unsel Notes
+       note_index+=1;
+       );
+ //==Operation With Selected Notes==//     
+ note_index=0;
+ loop(FNG_Count_Notes,
+      FNG_Note_ID = extension_api("FNG_GetMidiNote", FNG_Take, note_index);//GET Note_ID 
+      FNG_Note_Sel = extension_api("FNG_GetMidiNoteIntProperty", FNG_Note_ID , "SELECTED");//note prop
+         //IF Note Selected && Add_Velocity!=0  -Change Velocity
+        (FNG_Note_Sel>0&&Add_Velocity!=0) ? (Curr_Velo = extension_api("FNG_GetMidiNoteIntProperty", FNG_Note_ID , "VELOCITY");//note prop
+                        New_Velo = Curr_Velo + Add_Velocity;New_Velo<1?New_Velo=1;New_Velo>127?New_Velo=127;//New_Velocity
+                        extension_api("FNG_SetMidiNoteIntProperty", FNG_Note_ID , "VELOCITY" , New_Velo);
+                        Suc_Velo_Operation+=1;
+                        );//note prop
+        //IF Note Selected  && Transpose!=0     -Change Pitch(Transpose)
+        (FNG_Note_Sel>0&&Transpose!=0) ? (Curr_Pitch = extension_api("FNG_GetMidiNoteIntProperty", FNG_Note_ID , "PITCH");//note prop
+                        New_Pitch = Curr_Pitch + Transpose;New_Pitch<0?New_Pitch=0;New_Pitch>127?New_Pitch=127;//New_Pitch
+                        extension_api("FNG_SetMidiNoteIntProperty", FNG_Note_ID , "PITCH" , New_Pitch);
+                        Suc_Pitch_Operation+=1;
+                        );//note prop 
+       //IF Note Selected && Move_Notes!=0      -Change Position
+        (FNG_Note_Sel>0&&Move_Notes!=0) ? (Curr_POSITION = extension_api("FNG_GetMidiNoteIntProperty", FNG_Note_ID , "POSITION");//note prop
+                        New_POSITION = Curr_POSITION + Grid_Div_PPQ*Move_Notes ;
+                        New_POSITION_Time = MIDI_GetProjTimeFromPPQPos(ActiveTake, New_POSITION);//New_POSITION to Time
+                          (New_POSITION_Time>=Item_End_Time || New_POSITION_Time<Item_Start_Time) ? Verify_Pos=0 : Verify_Pos=1;//Verify Position
+                             Verify_Pos ? (extension_api("FNG_SetMidiNoteIntProperty", FNG_Note_ID , "POSITION" ,  New_POSITION);
+                                           Suc_Pos_Operation+=1;);
+                        ); 
+                                             
+      note_index+=1;
+     );
+ extension_api("FNG_FreeMidiTake", FNG_Take);
+ #Undo_Text = "~Change of Parameters Notes~" ;//Undo_Text
+ Undo_EndBlock(#Undo_Text, -1);//End Und  
+);
+//=======================================================================================================//
+MediaItem = GetSelectedMediaItem(0, 0);//Get selected media item
+ActiveTake = GetActiveTake(MediaItem);//Get ActiveTake 
+ GetSet_LoopTimeRange(0,0, Time_Sel_Start, Time_Sel_End,0); //Get Current Time Sel
+ Item_Start_Time = GetMediaItemInfo_Value(MediaItem, "D_POSITION");
+ Item_End_Time = Item_Start_Time+GetMediaItemInfo_Value(MediaItem, "D_LENGTH");
+    //OUT OF RANGE VERIFICATION - if the item is outside the time_selection,time_selection will be changed//
+    (Item_Start_Time>=Time_Sel_Start && Item_Start_Time>=Time_Sel_End)||
+    (Item_End_Time<=Time_Sel_Start && Item_End_Time<=Time_Sel_End) ? 
+             (Time_Sel_Start = Item_Start_Time;Time_Sel_End = Item_End_Time;
+              GetSet_LoopTimeRange(1,0, Time_Sel_Start, Time_Sel_End,0););//Set New Time Sel
+//=======================================================================================================//
+TakeIsMIDI(ActiveTake) ? //If ActiveTake is MIDI 
+(GetUserInputs("Change Parameters", 3 , "Change Position,Change Pitch,Change Velocity", #Parameter_Values) ?    //If UserInput "OK" then
+      (match("%i,%i,%i", #Parameter_Values, Move_Notes,Transpose,Add_Velocity);
+       Change_Parameters(););//Extract Velocity and Execuate Function          
+ );
+
+UpdateArrange();     
+
+/*===Example for extension_api("FNG_GetMidiNoteIntProperty", FNG_Note_ID,prop)
+prop = "PITCH","CHANNEL","VELOCITY","POSITION","LENGTH","SELECTED"========== */
