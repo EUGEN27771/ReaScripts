@@ -1,0 +1,56 @@
+/*****************************************************************************************************
+*  This JS-utility is designed for use ONLY in conjunction with a Script-"RetroRec".                 *
+*  JS writes the incoming MIDI-data.The Script retrieves the stored MIDI-data on the selected track. *
+*  Add JS on an empty track, be sure to specify a name for this track - "ForRetroRec".               *
+*  Set Track Rec-Arm and Set Record Monitiring:ON                                                    *
+*  Set Input:MIDI>All MIDI Inputs>All Channels;                                                      *
+*  Set "Record:Disable(monitoring ONLY)";                                                            *
+*  Hide Track,if needed                                                                              *
+*****************************************************************************************************/
+desc:ForRetroRec
+
+slider1:0<0,1000000,1>MSG_Count
+slider2:0<0,1000000,1>MSG_Number
+slider3:0<0,6553600000000,0.001>MSG_Beat_Position * 10^8
+slider4:0<0,256,1>msg1
+slider5:0<0,127,1>msg2
+slider6:0<0,127,1>msg3
+
+in_pin:none
+out_pin:none
+  
+@slider 
+
+slider1 = input_msg_count;//MSG_Count
+
+s = slider2*4;
+slider3= buf[s]  * (10^8);//MSG_Beat_Position+offset * (10^8)
+slider4=buf[s+1];slider5=buf[s+2];slider6=buf[s+3];//msg1,msg2,msg3
+
+@init
+ext_noinit = 1; 
+
+//=== SAVE INPUT MIDI to buf[...] ===//
+@block
+Start_Beat_Position = beat_position;//When New Block is starting 
+
+ //=== Reset Counter ===//
+ (play_state==0 || Start_Beat_Position<Last_Beat_Position || Start_Beat_Position-Last_Beat_Position>0.2) ? i = 0;
+                                                             
+ 
+ //===Save each position and msg1,msg2,msg3 to buf[0...n]===// 
+  play_state == 1 || play_state == 5 ? //1=play-main mode,5=rec-only for check!
+   (
+    while (midirecv(offset,msg1,msg2,msg3) )    
+             (i==0 ? input_msg_count=0;
+              input_msg_count+=1; slider1 = input_msg_count;//Update Slider MSG_Count
+              buf[i] = Start_Beat_Position + (tempo/60)/srate*offset;//Position w offset
+              buf[i+1] = msg1;  
+              buf[i+2] = msg2;
+              buf[i+3] = msg3;               
+              i+=4;
+              midisend(offset,msg1,msg2,msg3);//Pass true
+              );
+   );
+
+Last_Beat_Position = Start_Beat_Position;
