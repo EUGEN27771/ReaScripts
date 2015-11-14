@@ -15,9 +15,9 @@ loop(CountTracks(0),
   //==Get First and Last MSG_Beat_Positions==//
   MSG_Count  = TrackFX_GetParam(Track_ID, FX_index,0, minval, maxval);//Get MSG_Count from JS
   TrackFX_SetParam(Track_ID, FX_index, 1, 0);//Set 0-st MSG_Number and
-  First_MSG_Pos = TrackFX_GetParam(Track_ID, FX_index,2, minval, maxval) / (10^8);//Get 0-st MSG_Beat_Position
+  First_MSG_Pos = TrackFX_GetParam(Track_ID, FX_index,2, minval, maxval);//Get 0-st MSG_Beat_Position
   TrackFX_SetParam(Track_ID, FX_index, 1, MSG_Count-1);//Set Last MSG_Number and
-  Last_MSG_Pos  = TrackFX_GetParam(Track_ID, FX_index,2, minval, maxval) / (10^8);//Get Last MSG_Beat_Position
+  Last_MSG_Pos  = TrackFX_GetParam(Track_ID, FX_index,2, minval, maxval);//Get Last MSG_Beat_Position
   Start_Time = TimeMap2_beatsToTime(0, First_MSG_Pos, measuresInOpt);//Start Time = First_MSG_Pos 
   End_Time   = TimeMap2_beatsToTime(0, Last_MSG_Pos, measuresInOpt);//END Time = Last_MSG_Pos
   //==Insert and ReName Item==//  
@@ -36,7 +36,7 @@ loop(CountTracks(0),
 i=0;
 loop(MSG_Count,
      TrackFX_SetParam(Track_ID, FX_index, 1, i/4);//Set MSG_Number(i/4=MSG_Number)
-          buf[i] = TrackFX_GetParam(Track_ID, FX_index,2, minval, maxval) / (10^8);//Get MSG_Beat_Position
+          buf[i] = TrackFX_GetParam(Track_ID, FX_index,2, minval, maxval);//Get MSG_Beat_Position
           buf[i+1] = TrackFX_GetParam(Track_ID, FX_index,3, minval, maxval);//Get msg1
           buf[i+2] = TrackFX_GetParam(Track_ID, FX_index,4, minval, maxval);//Get msg2
           buf[i+3] = TrackFX_GetParam(Track_ID, FX_index,5, minval, maxval);//Get msg3
