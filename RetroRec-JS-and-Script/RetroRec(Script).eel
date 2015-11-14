@@ -2,6 +2,7 @@
 
 #track_name = "ForRetroRec";//Track name
 FX_index=0;
+Undo_BeginBlock();//Start Undo
 //==Find Track "ForRetroRec"==//
 loop(CountTracks(0),
       Cur_Track_ID = GetTrack(0,Track_index);
@@ -77,6 +78,6 @@ loop(MSG_Count,
     ); 
 
 MIDI_Sort(Take_ID);
-
 UpdateArrange();
+Undo_EndBlock("~RetroRec:Add MIDI-data on the Selected Track~", -1);//End Undo
 
