@@ -1,83 +1,80 @@
 //==This Script is designed for use ONLY in conjunction with a JS-utility "ForRetroRec"==//
 
-#track_name = "ForRetroRec";//Track name
-FX_index=0;
-Undo_BeginBlock();//Start Undo
-//==Find Track "ForRetroRec"==//
-loop(CountTracks(0),
-      Cur_Track_ID = GetTrack(0,Track_index);
-      GetSetMediaTrackInfo_String(Cur_Track_ID, "P_NAME", #cur_track_name, 0);     
-      stricmp(#cur_track_name,#track_name) == 0 ? Track_ID = Cur_Track_ID;
-      Track_index += 1;
-     );
+function Add_MIDI_on_Track()
+(Undo_BeginBlock();//Start Undo
+//1===Insert MIDI-Item with a certain Length in the 1-st Selected Track====//
+  Proj_Offset = GetProjectTimeOffset(0, rndframe);
+  MSG_Count = TrackFX_GetParam(Track_ID, FX_index,0, minval, maxval);//Get MSG_Count from JS
+  MSG_Count ?  //IF MSG_Count > 0 , then:
+   (TrackFX_SetParam(Track_ID, FX_index, 1, 0);//Set 0-st MSG_Number and
+    First_MSG_Pos = TrackFX_GetParam(Track_ID, FX_index,2, minval, maxval);//Get 0-st MSG _Position
+    TrackFX_SetParam(Track_ID, FX_index, 1, MSG_Count-1);//Set Last MSG_Number and
+    Last_MSG_Pos  = TrackFX_GetParam(Track_ID, FX_index,2, minval, maxval);//Get Last MSG _Position
+    Start_Time = First_MSG_Pos-Proj_Offset;//Start Time 
+    End_Time   = Last_MSG_Pos-Proj_Offset;//END Time
+    //==Insert and ReName Item==//    
+    Sel_Track_ID = GetSelectedTrack(0,0);//Get 1-st selected Track ID
+    GetSetMediaTrackInfo_String(Sel_Track_ID, "P_NAME", #TrackName, 0);//Get Track Name(for rename New Item-Take)  
+    Item_ID = CreateNewMIDIItemInProj(Sel_Track_ID, Start_Time, End_Time, qnInOpt);
+    Take_ID = GetActiveTake(Item_ID);//Get Active Take from Item
+    GetSetMediaItemTakeInfo_String(Take_ID, "P_NAME", #TrackName , 1);//Rename Item-Take to parent Track name
+    SelectAllMediaItems(0,0);SetMediaItemSelected(Item_ID, 1);//(just in case:))
+   ) : MB("MIDI-Buffer is EMPTY", "Information", 0);//Inform,if the buffer is empty(type 0=OK)
 
-//====Insert MIDI-Item with a certain Length in the 1-st Selected Track====//
-  //==Get First and Last MSG_Beat_Positions==//
-  MSG_Count  = TrackFX_GetParam(Track_ID, FX_index,0, minval, maxval);//Get MSG_Count from JS
-  TrackFX_SetParam(Track_ID, FX_index, 1, 0);//Set 0-st MSG_Number and
-  First_MSG_Pos = TrackFX_GetParam(Track_ID, FX_index,2, minval, maxval);//Get 0-st MSG_Beat_Position
-  TrackFX_SetParam(Track_ID, FX_index, 1, MSG_Count-1);//Set Last MSG_Number and
-  Last_MSG_Pos  = TrackFX_GetParam(Track_ID, FX_index,2, minval, maxval);//Get Last MSG_Beat_Position
-  Start_Time = TimeMap2_beatsToTime(0, First_MSG_Pos, measuresInOpt);//Start Time = First_MSG_Pos 
-  End_Time   = TimeMap2_beatsToTime(0, Last_MSG_Pos, measuresInOpt);//END Time = Last_MSG_Pos
-  //==Insert and ReName Item==//  
-    GetSet_LoopTimeRange(0,0,User_T_Sel_Start,User_T_Sel_End,0); //Get-Save User Time Selection  
-  GetSet_LoopTimeRange(1,0,  Start_Time , End_Time  , 0);//Set New Time Sel (Start_Time - End_Time)   
-  Sel_Track_ID = GetSelectedTrack(0,0);//Get 1-st selected Track ID
-  SetOnlyTrackSelected(Sel_Track_ID);//Select Only 1-st selected Track for Insert New MIDI-Item
-  GetSetMediaTrackInfo_String(Sel_Track_ID, "P_NAME", #TrackName, 0);//Get Track Name(for rename New Item-Take)
-  SelectAllMediaItems(0,0);//UnSel All Items(just in case:))  
-  Main_OnCommand(40214, 0);//And "Insert New MIDI Item"(By default,it is already Selected)
-  Take_ID = GetActiveTake(GetSelectedMediaItem(0, 0));//Get Active Take from Item
-  GetSetMediaItemTakeInfo_String(Take_ID, "P_NAME", #TrackName , 1);//Rename Item-Take to parent Track name
-    GetSet_LoopTimeRange(1,0,User_T_Sel_Start,User_T_Sel_End,0); //Restore User Time Selection
-
-//====READ DATA FROM JSFX(RetroRec) TO buf[0....n]=======================//
-i=0;
-loop(MSG_Count,
-     TrackFX_SetParam(Track_ID, FX_index, 1, i/4);//Set MSG_Number(i/4=MSG_Number)
-          buf[i] = TrackFX_GetParam(Track_ID, FX_index,2, minval, maxval);//Get MSG_Beat_Position
-          buf[i+1] = TrackFX_GetParam(Track_ID, FX_index,3, minval, maxval);//Get msg1
-          buf[i+2] = TrackFX_GetParam(Track_ID, FX_index,4, minval, maxval);//Get msg2
-          buf[i+3] = TrackFX_GetParam(Track_ID, FX_index,5, minval, maxval);//Get msg3
-     i+=4;
-     );  
+//2===READ DATA FROM JSFX(RetroRec) TO buf[.,.,.,.]=======================//
+  i=0;
+  loop(MSG_Count,
+       TrackFX_SetParam(Track_ID, FX_index, 1, i/4);//Set MSG_Number(i/4=MSG_Number)
+            buf[i] = TrackFX_GetParam(Track_ID, FX_index,2, minval, maxval);//Get MSG_Beat_Position
+            buf[i+1] = TrackFX_GetParam(Track_ID, FX_index,3, minval, maxval);//Get msg1
+            buf[i+2] = TrackFX_GetParam(Track_ID, FX_index,4, minval, maxval);//Get msg2
+            buf[i+3] = TrackFX_GetParam(Track_ID, FX_index,5, minval, maxval);//Get msg3
+       i+=4;
+       );  
      
-//========Create MIDI-EVENTS==========//        
-i=0;
-loop(MSG_Count,
-     Time_Pos = TimeMap2_beatsToTime(0, buf[i], measuresInOptional);
-     PPQ_Pos = MIDI_GetPPQPosFromProjTime(Take_ID, Time_Pos);
-         msgType = (buf[i+1] & 240 );  // message type nibble
-         msgChannel = (buf[i+1] & 15); // channel nibble(0-15)    
-         msg2 = buf[i+2];
-         msg3 = buf[i+3];
-         
-     //==For Note ON(144)-------Find Note OFF(128)-------and Insert Note==//
-     msgType==144 && msg3>0  ? (i_2=4;OK_Send=0;
-                                loop(MSG_Count-i/4,
-                                     msgType_2 = (buf[i+1+i_2] & 240 );
-                                     msgChannel_2 = (buf[i+1+i_2] & 15);
-                                     msg2_2 = buf[i+2+i_2];
-                                     msg3_2 = buf[i+3+i_2];
+//3=======Create MIDI-EVENTS==========//        
+  i=0;
+  loop(MSG_Count,
+       Msg_Time_Pos = buf[i]-Proj_Offset; 
+       PPQ_Pos = MIDI_GetPPQPosFromProjTime(Take_ID, Msg_Time_Pos);
+       msgType = (buf[i+1] & 240 );  // message type nibble
+       msgChannel = (buf[i+1] & 15); // channel nibble(0-15)    
+       msg2 = buf[i+2];
+       msg3 = buf[i+3];
+       //==For Note ON(144)-------Find Note OFF(128)-------and Insert Note==//
+       msgType==144 && msg3>0  ? (i_2=4;OK_Send=0;
+                                  loop(MSG_Count-i/4,
+                                       msgType_2 = (buf[i+1+i_2] & 240 );
+                                       msgChannel_2 = (buf[i+1+i_2] & 15);
+                                       msg2_2 = buf[i+2+i_2];
+                                       msg3_2 = buf[i+3+i_2];
                                     
-                                     msgType_2=128 && msgChannel_2==msgChannel && msg2==msg2_2 && OK_Send==0 ?
-                                        (Time_Pos_2 = TimeMap2_beatsToTime(0, buf[i+i_2], measuresInOptional);
-                                         PPQ_Pos_2 = MIDI_GetPPQPosFromProjTime(Take_ID, Time_Pos_2);
-                                         MIDI_InsertNote(Take_ID,sel,muted, PPQ_Pos, PPQ_Pos_2 , msgChannel, msg2, msg3, 1);
-                                         OK_Send=1;Ins_Note+=1;
-                                         );
-                                     i_2+=4;
-                                     )
-                                );
-     
-     //==For PKeyPressue,ControlChange,ProgrammChange,ChanPressue,PWheel Change---Insert==//
-     msgType==160 ||  msgType==176 || msgType==192 || msgType==208 || msgType==224  ? 
-              (MIDI_InsertCC(Take_ID,1,0, PPQ_Pos, msgType , msgChannel,  msg2, msg3 );Ins_CC+=1;);
-     i+=4;
-    ); 
+                                       msgType_2=128 && msgChannel_2==msgChannel && msg2==msg2_2 && OK_Send==0 ?
+                                          (Msg_Time_Pos_2 = buf[i+i_2]-Proj_Offset;
+                                           PPQ_Pos_2 = MIDI_GetPPQPosFromProjTime(Take_ID, Msg_Time_Pos_2);
+                                           MIDI_InsertNote(Take_ID,sel,muted, PPQ_Pos, PPQ_Pos_2 , msgChannel, msg2, msg3, 1);
+                                           OK_Send=1;Ins_Note+=1;
+                                           );
+                                       i_2+=4;
+                                       )
+                                  );
+       //==For PKeyPressue,ControlChange,ProgrammChange,ChanPressue,PWheel Change---Insert==//
+       msgType==160 ||  msgType==176 || msgType==192 || msgType==208 || msgType==224  ? 
+            (MIDI_InsertCC(Take_ID,1,0, PPQ_Pos, msgType , msgChannel,  msg2, msg3 );Ins_CC+=1;);
+       i+=4;
+      ); 
 
 MIDI_Sort(Take_ID);
 UpdateArrange();
 Undo_EndBlock("~RetroRec:Add MIDI-data on the Selected Track~", -1);//End Undo
-
+);
+//=========================================================================================//
+i=0;
+loop(CountTracks(0), Cur_Track_ID = GetTrack(0,i);
+     TrackFX_GetParamName(Cur_Track_ID,0,0,#0param_name);TrackFX_GetParamName(Cur_Track_ID,0,1,#1param_name);
+     (stricmp("MSG_Count",#0param_name) == 0 && stricmp("MSG_Number",#1param_name) == 0) ? Track_ID = Cur_Track_ID;
+     i+=1;);
+     
+Track_ID ? 
+Add_MIDI_on_Track() : 
+MB("The desired JS-utility is not found!\nSee Info in the header of the Script.", "Info", 0);    
