@@ -1,17 +1,17 @@
 /*****************************************************************************************************
 *  This JS-utility is designed for use ONLY in conjunction with a Script-"RetroRec".                 *
 *  JS writes the incoming MIDI-data.The Script retrieves the stored MIDI-data on the selected track. *
-*  Add JS on an empty track, be sure to specify a name for this track - "ForRetroRec".               *
-*  Set Track Rec-Arm and Set Record Monitiring:ON                                                    *
+*  Firstly,add JS on an EMPTY TRACK;                                                                 *
+*  Set Track REC-ARM:ENABLE and Set Record Monitiring:ON                                             *
 *  Set Input:MIDI>All MIDI Inputs>All Channels;                                                      *
 *  Set "Record:Disable(monitoring ONLY)";                                                            *
-*  Hide Track,if needed                                                                              *
+*  Hide Track,if needed.You can save the project as a Template.                                      *
 *****************************************************************************************************/
 desc:ForRetroRec
 
 slider1:0<0,8388608,1>MSG_Count
 slider2:0<0,2097152,1>MSG_Number
-slider3:0<0,65536,0.001>MSG_Beat_Position
+slider3:0<0,65536,0.001>MSG_Position
 slider4:0<0,256,1>msg1
 slider5:0<0,127,1>msg2
 slider6:0<0,127,1>msg3
@@ -24,27 +24,26 @@ out_pin:none
 slider1 = input_msg_count;//MSG_Count
 
 s = slider2*4;
-slider3= buf[s];//MSG_Beat_Position+offset
+slider3= buf[s];//MSG_Position+offset
 slider4=buf[s+1];slider5=buf[s+2];slider6=buf[s+3];//msg1,msg2,msg3
 
 @init
 ext_noinit = 1; 
 
-//=== SAVE INPUT MIDI to buf[...] ===//
+//=== SAVE INPUT MIDI to buf[.,.,.,.] ===//
 @block
-Start_Beat_Position = beat_position;//When New Block is starting 
+Start_Play_Position = play_position;//When New Block is starting 
 
  //=== Reset Counter ===//
- (play_state==0 || Start_Beat_Position<Last_Beat_Position || Start_Beat_Position-Last_Beat_Position>0.2) ? i = 0;
+ (play_state==0 || abs(Start_Play_Position-Last_Play_Position)>0.2) ? i = 0;
                                                              
- 
- //===Save each position and msg1,msg2,msg3 to buf[0...n]===// 
+  //===Save each position and msg1,msg2,msg3 to buf[.,.,.,.]===// 
   play_state == 1 || play_state == 5 ? //1=play-main mode,5=rec-only for check!
    (
     while (midirecv(offset,msg1,msg2,msg3) )    
              (i==0 ? input_msg_count=0;
               input_msg_count+=1; slider1 = input_msg_count;//Update Slider MSG_Count
-              buf[i] = Start_Beat_Position + (tempo/60)/srate*offset;//Position w offset
+              buf[i] = Start_Play_Position + offset/srate;//Position w offset:(1/srate)*offset
               buf[i+1] = msg1;  
               buf[i+2] = msg2;
               buf[i+3] = msg3;               
@@ -53,4 +52,4 @@ Start_Beat_Position = beat_position;//When New Block is starting
               );
    );
 
-Last_Beat_Position = Start_Beat_Position;
+Last_Play_Position = Start_Play_Position;
