@@ -38,7 +38,7 @@ Start_Play_Position = play_position;//When New Block is starting
 
  //=== Reset Counter ===//
  (play_state==0 || abs(Start_Play_Position-Last_Play_Position)>0.2; ) ? 
-                  (i = 0; buf[8388604]=samplesblock/srate;);//reset "i",save sblock/srate to buf[2097151] 
+                  (i = 0; buf[8388604]=samplesblock/srate;);//reset "i",save sblock/srate to buf[8388604] 
   
                                                              
   //===Save each position and msg1,msg2,msg3 to buf[.,.,.,.]===// 
