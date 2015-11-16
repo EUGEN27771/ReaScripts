@@ -1,12 +1,17 @@
-//==This Script is designed for use ONLY in conjunction with a JS-utility "ForRetroRec"==//
+/******************************************************************************************
+* v.20151611 == Reaper v5.1,SWS 2.8.2                                                     *
+* This Script is designed for use ONLY in conjunction with a JS-utility "ForRetroRec"     *
+******************************************************************************************/
 
 function Add_MIDI_on_Track()
 (Undo_BeginBlock();//Start Undo
-//1===Insert MIDI-Item with a certain Length in the 1-st Selected Track====//
-  Proj_Offset = GetProjectTimeOffset(0, rndframe);
+//1===Insert MIDI-Item with a certain Length in the 1-st Selected Track====// 
+  Reduce_Latency = TrackFX_GetParam(Track_ID, FX_index,6, minval, maxval); 
+  Reduce_Latency ? Latency=TrackFX_GetParam(Track_ID,FX_index,7,minval,maxval)+GetOutputLatency();//Calculate latency
+  Proj_Offset = GetProjectTimeOffset(0, rndframe)+ Latency;//Calculate Total Offset
   MSG_Count = TrackFX_GetParam(Track_ID, FX_index,0, minval, maxval);//Get MSG_Count from JS
   MSG_Count ?  //IF MSG_Count > 0 , then:
-   (TrackFX_SetParam(Track_ID, FX_index, 1, 0);//Set 0-st MSG_Number and
+   (TrackFX_SetParam(Track_ID, FX_index, 1, 0);//Set 0-st MSG_Number and 
     First_MSG_Pos = TrackFX_GetParam(Track_ID, FX_index,2, minval, maxval);//Get 0-st MSG _Position
     TrackFX_SetParam(Track_ID, FX_index, 1, MSG_Count-1);//Set Last MSG_Number and
     Last_MSG_Pos  = TrackFX_GetParam(Track_ID, FX_index,2, minval, maxval);//Get Last MSG _Position
@@ -41,7 +46,7 @@ function Add_MIDI_on_Track()
        msgChannel = (buf[i+1] & 15); // channel nibble(0-15)    
        msg2 = buf[i+2];
        msg3 = buf[i+3];
-       //==For Note ON(144)-------Find Note OFF(128)-------and Insert Note==//
+       //==For each Note ON(144)-------Find Note OFF(128)-------and Insert Note==//
        msgType==144 && msg3>0  ? (i_2=4;OK_Send=0;
                                   loop(MSG_Count-i/4,
                                        msgType_2 = (buf[i+1+i_2] & 240 );
