@@ -31,8 +31,6 @@ s = slider2*4;
 slider3= buf[s];//MSG_Position+offset
 slider4=buf[s+1];slider5=buf[s+2];slider6=buf[s+3];//msg1,msg2,msg3
 
-slider7 ? slider8=samplesblock/srate : slider8=0;//For Reduce Latency
-
 @init
 ext_noinit = 1; 
 
@@ -41,7 +39,7 @@ ext_noinit = 1;
 Start_Play_Position = play_position;//When New Block is starting 
 
  //=== Reset Counter ===//
- (play_state==0 || abs(Start_Play_Position-Last_Play_Position)>0.2) ? i = 0;
+ (play_state==0 || abs(Start_Play_Position-Last_Play_Position)>0.2) ? (i = 0;slider8=samplesblock/srate;);
                                                              
   //===Save each position and msg1,msg2,msg3 to buf[.,.,.,.]===// 
   play_state == 1 || play_state == 5 ? //1=play-main mode,5=rec-only for check!
