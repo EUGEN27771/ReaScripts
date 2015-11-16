@@ -1,5 +1,5 @@
 /*****************************************************************************************************
-*  v.20151611 == Reaper v5.1,SWS 2.8.2                                                               *
+*  v.20151611-2 == Reaper v5.1,SWS 2.8.2                                                             *
 *  This JS-utility is designed for use ONLY in conjunction with a Script-"RetroRec".                 *
 *  JS writes the incoming MIDI-data.The Script retrieves the stored MIDI-data on the selected track. *
 *  Firstly,add JS on an EMPTY TRACK;                                                                 *
@@ -11,14 +11,12 @@
 desc:ForRetroRec
 
 slider1:0<0,8388608,1>MSG_Count
-slider2:0<0,2097152,1>MSG_Number
+slider2:0<0,2097151,1>MSG_Number
 slider3:0<0,65536,0.001>MSG_Position
 slider4:0<0,256,1>msg1
 slider5:0<0,127,1>msg2
 slider6:0<0,127,1>msg3
 slider7:1<0,1,1{No,Yes}>Compensate Latency
-slider8:0<0,1,0.001>Samples_Block
-
 
 in_pin:none
 out_pin:none
@@ -39,7 +37,9 @@ ext_noinit = 1;
 Start_Play_Position = play_position;//When New Block is starting 
 
  //=== Reset Counter ===//
- (play_state==0 || abs(Start_Play_Position-Last_Play_Position)>0.2) ? (i = 0; slider8=samplesblock/srate;);
+ (play_state==0 || abs(Start_Play_Position-Last_Play_Position)>0.2; ) ? 
+                  (i = 0; buf[8388604]=samplesblock/srate;);//reset "i",save sblock/srate to buf[2097151] 
+  
                                                              
   //===Save each position and msg1,msg2,msg3 to buf[.,.,.,.]===// 
   play_state == 1 || play_state == 5 ? //1=play-main mode,5=rec-only for check!
