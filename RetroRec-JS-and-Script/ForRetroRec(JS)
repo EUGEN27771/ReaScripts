@@ -6,7 +6,7 @@
 *  Set Track REC-ARM:ENABLE and Set Record Monitiring:ON                                             *
 *  Set Input:MIDI>All MIDI Inputs>All Channels;                                                      *
 *  Set "Record:Disable(monitoring ONLY)";                                                            *
-*  Hide Track,if needed.You can save the project as a Template.                                      *
+*  Hide Track,if needed.You can save the project as a Template!                                      *
 *****************************************************************************************************/
 desc:ForRetroRec
 
