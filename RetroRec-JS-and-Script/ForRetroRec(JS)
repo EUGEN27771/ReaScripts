@@ -16,7 +16,7 @@ slider3:0<0,65536,0.001>MSG_Position
 slider4:0<0,256,1>msg1
 slider5:0<0,127,1>msg2
 slider6:0<0,127,1>msg3
-slider7:1<0,1,1{No,Yes}>Reduce Latency
+slider7:1<0,1,1{No,Yes}>Compensate Latency
 slider8:0<0,1,0.001>Samples_Block
 
 
@@ -28,7 +28,7 @@ out_pin:none
 slider1 = input_msg_count;//MSG_Count
 
 s = slider2*4;
-slider3= buf[s];//MSG_Position+offset
+slider3=buf[s];//MSG_Position+offset
 slider4=buf[s+1];slider5=buf[s+2];slider6=buf[s+3];//msg1,msg2,msg3
 
 @init
@@ -39,7 +39,7 @@ ext_noinit = 1;
 Start_Play_Position = play_position;//When New Block is starting 
 
  //=== Reset Counter ===//
- (play_state==0 || abs(Start_Play_Position-Last_Play_Position)>0.2) ? (i = 0;slider8=samplesblock/srate;);
+ (play_state==0 || abs(Start_Play_Position-Last_Play_Position)>0.2) ? (i = 0; slider8=samplesblock/srate;);
                                                              
   //===Save each position and msg1,msg2,msg3 to buf[.,.,.,.]===// 
   play_state == 1 || play_state == 5 ? //1=play-main mode,5=rec-only for check!
