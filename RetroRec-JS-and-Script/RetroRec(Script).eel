@@ -1,5 +1,5 @@
 /******************************************************************************************
-* v.20151611 == Reaper v5.1,SWS 2.8.2                                                     *
+* v.20151611-2 == Reaper v5.1,SWS 2.8.2                                                   *
 * This Script is designed for use ONLY in conjunction with a JS-utility "ForRetroRec"     *
 ******************************************************************************************/
 
@@ -7,7 +7,8 @@ function Add_MIDI_on_Track()
 (Undo_BeginBlock();//Start Undo
 //1===Insert MIDI-Item with a certain Length in the 1-st Selected Track====// 
   Comp_Latency = TrackFX_GetParam(Track_ID, FX_index,6, minval, maxval);//Get "Compensate latency" slider value 
-  Comp_Latency ? Latency=TrackFX_GetParam(Track_ID,FX_index,7,minval,maxval)+GetOutputLatency();//Calculate latency
+  Comp_Latency ? (TrackFX_SetParam(Track_ID, FX_index, 1, 2097151);//Set 2097151-st MSG_Number(Last-4 buf slot=Samples_Block)
+                  Latency=TrackFX_GetParam(Track_ID,FX_index,2,minval,maxval)+GetOutputLatency(););//Calculate latency
   Proj_Offset = GetProjectTimeOffset(0, rndframe)+ Latency;//Calculate Total Offset
   MSG_Count = TrackFX_GetParam(Track_ID, FX_index,0, minval, maxval);//Get MSG_Count from JS
   MSG_Count ?  //IF MSG_Count > 0 , then:
