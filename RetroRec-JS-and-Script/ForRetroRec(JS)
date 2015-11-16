@@ -1,4 +1,5 @@
 /*****************************************************************************************************
+*  v.20151611 == Reaper v5.1,SWS 2.8.2                                                               *
 *  This JS-utility is designed for use ONLY in conjunction with a Script-"RetroRec".                 *
 *  JS writes the incoming MIDI-data.The Script retrieves the stored MIDI-data on the selected track. *
 *  Firstly,add JS on an EMPTY TRACK;                                                                 *
@@ -15,6 +16,9 @@ slider3:0<0,65536,0.001>MSG_Position
 slider4:0<0,256,1>msg1
 slider5:0<0,127,1>msg2
 slider6:0<0,127,1>msg3
+slider7:1<0,1,1{No,Yes}>Reduce Latency
+slider8:0<0,1,0.001>Samples_Block
+
 
 in_pin:none
 out_pin:none
@@ -26,6 +30,8 @@ slider1 = input_msg_count;//MSG_Count
 s = slider2*4;
 slider3= buf[s];//MSG_Position+offset
 slider4=buf[s+1];slider5=buf[s+2];slider6=buf[s+3];//msg1,msg2,msg3
+
+slider7 ? slider8=samplesblock/srate : slider8=0;//For Reduce Latency
 
 @init
 ext_noinit = 1; 
