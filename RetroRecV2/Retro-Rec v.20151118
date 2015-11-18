@@ -1,0 +1,175 @@
+//v.20151118 == Reaper v5.1,SWS 2.8.2
+
+Undo_BeginBlock();//Start Undo
+function Create_JS_Utility()
+(  #File_Name = "\\Effects\\midi\\ForRetroRec v.20151118";
+   GetResourcePath(#Path);
+   strcat(#Path,#File_Name);
+   JS_FILE = fopen(#Path, "w");//Create JS MIDI_ForRetroRec v.20151118"
+////////////////////////////////////////////////////////////////////////////////////////////////
+//==================JS_Utility TEXT===========================================================//
+   fwrite(JS_FILE,"
+This JS-utility is designed for use ONLY in conjunction with a Script-RetroRec.
+JS writes the incoming MIDI-data.The Script retrieves the stored MIDI-data on the sel track.
+desc:ForRetroRec v.20151118
+slider1:0<0,8388608,1>MSG_Count
+slider2:0<0,2097151,1>MSG_Number
+slider3:0<0,65536,0.001>MSG_Position
+slider4:0<0,256,1>msg1
+slider5:0<0,127,1>msg2
+slider6:0<0,127,1>msg3
+slider7:1<0,1,1{No,Yes}>Compensate Latency
+slider8:0<0,1,1{Only when you press Play,At each change of Playposition}>ReWrite Buffer
+in_pin:none
+out_pin:none
+@slider 
+slider1 = input_msg_count;//MSG_Count
+s = slider2*4;
+slider3=buf[s];//MSG_Position+offset
+slider4=buf[s+1];slider5=buf[s+2];slider6=buf[s+3];//msg1,msg2,msg3
+@init
+ext_noinit = 1; 
+@block
+Start_Play_Position = play_position;//When New Block is starting 
+ //===Reset Counter===//
+ (play_state==0 || (slider8>0 && abs(Start_Play_Position-Last_Play_Position)>0.2) ) ? 
+                   (i = 0; buf[8388604]=samplesblock/srate;);//Reset i;buf[8388604]=sblock/srate
+  //===Save each position and msg1,msg2,msg3 to buf[.,.,.,.]===// 
+  play_state == 1 || play_state == 5 ? //1=play-main mode,5=rec-only for check!
+   (while (midirecv(offset,msg1,msg2,msg3) )    
+             (i==0 ? input_msg_count=0;
+              input_msg_count+=1; slider1 = input_msg_count;//Update Slider MSG_Count
+              buf[i] = Start_Play_Position + offset/srate;//Pos w offset:(1/srate)*offset
+              buf[i+1] = msg1;
+              buf[i+2] = msg2;
+              buf[i+3] = msg3;               
+              i+=4;
+              midisend(offset,msg1,msg2,msg3);//Pass true
+              );
+   );              
+Last_Play_Position = Start_Play_Position;", 0);
+  fclose(JS_FILE);
+//============================================================================================//  
+);//////////////////////////////////////////////////////////////////////////////////////////////
+
+function Read_Data_From_JS()//===READ DATA FROM JSFX(ForRetroRec)===//
+( //=======Calculate Proj_Offset====//
+  Comp_Latency = TrackFX_GetParam(Track_ID, FX_index,6, minval, maxval);//Get "Compensate latency" slider value 
+  Comp_Latency ? (TrackFX_SetParam(Track_ID, FX_index, 1, 2097151);//Set 2097151-st MSG_Number(buf[8388604]=Samples_Block)
+                  Latency=TrackFX_GetParam(Track_ID,FX_index,2,minval,maxval)+GetOutputLatency(););//Calculate latency
+  Proj_Offset = GetProjectTimeOffset(0, rndframe)+ Latency;//Calculate Total Offset
+     //==Initial Min_Pos=Max_Pos = 0-st MSG_Play_Position
+     TrackFX_SetParam(Track_ID, FX_index, 1, 0);//Set 0-st MSG 
+     Min_Pos=Max_Pos=TrackFX_GetParam(Track_ID, FX_index,2, minval, maxval);//Get Value
+     
+  MSG_Count = TrackFX_GetParam(Track_ID, FX_index,0, minval, maxval);//Get MSG_Count from JS
+  //======Read MIDI-DATA========//
+  new_itm = 8384512;//buffer offset
+  i=0;j=0;
+  loop(MSG_Count,
+       TrackFX_SetParam(Track_ID, FX_index, 1, i/4);//Set MSG_Number(i/4=MSG_Number 0-based)
+          buf[i] = TrackFX_GetParam(Track_ID, FX_index,2, minval, maxval);//Get MSG_Play_Position            
+          //Read msg1,2,3//
+          buf[i+1] = TrackFX_GetParam(Track_ID, FX_index,3, minval, maxval);//Get msg1
+          buf[i+2] = TrackFX_GetParam(Track_ID, FX_index,4, minval, maxval);//Get msg2
+          buf[i+3] = TrackFX_GetParam(Track_ID, FX_index,5, minval, maxval);//Get msg3            
+            //Update Min_Pos and Max_Pos//            
+            Min_Pos>buf[i]?Min_Pos=buf[i];//Update Min Position
+            Max_Pos<buf[i]?Max_Pos=buf[i];//Update Max Position
+            //==Analize MSG_Position and Save MSG_Number to buf[new_itm+.] IF Current Pos<Prev Pos      
+            (i>=4 && buf[i]<buf[i-4]) ? (j+=1; buf[new_itm+j] = i/4;);//MSG_Number will be used as TRIGGER to create New Items           
+       i+=4;
+       );  
+);     
+function Insert_MIDI()       
+( //======Start MAIN Function=====//
+  Sel_Track_ID = GetSelectedTrack(0,0);//Get 1-st selected Track ID(For ADD MIDI-DATA)
+  GetSetMediaTrackInfo_String(Sel_Track_ID, "P_NAME", #TrackName, 0);//Get Track Name(for rename New Item-Takes)  
+  SetOnlyTrackSelected(Sel_Track_ID);SelectAllMediaItems(0,0);//Select-ONLY TRACK and UNSEL ALL ITEMS in Project
+  //=====
+  i=0;j=0;
+  loop(MSG_Count,//=======Create MIDI-Item=========// 
+       buf[new_itm+j] == i/4 ? //Find "TRIGGER" and Create New Item,if trig found
+          (Take_ID ? MIDI_Sort(Take_ID);//MIDI_Sort Prev_Take if Exist
+           Item_Start = Min_Pos - Proj_Offset;
+           Item_End = Max_Pos - Proj_Offset;
+           Item_ID = CreateNewMIDIItemInProj(Sel_Track_ID, Item_Start, Item_End, qnInOpt);       
+           Take_ID = GetActiveTake(Item_ID);//Get Active Take from Item           
+           #NewName = #TrackName;
+           sprintf(#Item_Number, "%d",j+1);//Num To String(and 1-based count)
+           strcat(#NewName,#Item_Number);// Name + NUMBER           
+           GetSetMediaItemTakeInfo_String(Take_ID, "P_NAME", #NewName , 1);//Rename Item to parent Track name+Number
+           SetMediaItemSelected(Item_ID, 1);//SELECT NEW ITEM!
+           j+=1;);       
+       //=======Create MIDI-EVENTS in Current Item==========// 
+       Msg_Time_Pos = buf[i]-Proj_Offset; 
+       PPQ_Pos = MIDI_GetPPQPosFromProjTime(Take_ID, Msg_Time_Pos);
+       msgType = (buf[i+1] & 240 );  // message type nibble
+       msgChannel = (buf[i+1] & 15); // channel nibble(0-15)    
+       msg2 = buf[i+2];
+       msg3 = buf[i+3];
+       //==For each Note ON(144)-------Find Note OFF(128)-------and Insert Note==//
+       msgType==144 && msg3>0  ? (i_2=4;OK_Send=0;
+                                  loop(MSG_Count-i/4,
+                                       msgType_2 = (buf[i+1+i_2] & 240 );
+                                       msgChannel_2 = (buf[i+1+i_2] & 15);
+                                       msg2_2 = buf[i+2+i_2];
+                                       msg3_2 = buf[i+3+i_2];
+                                    
+                                       msgType_2=128 && msgChannel_2==msgChannel && msg2==msg2_2 && OK_Send==0 ?
+                                          (Msg_Time_Pos_2 = buf[i+i_2]-Proj_Offset;
+                                           PPQ_Pos_2 = MIDI_GetPPQPosFromProjTime(Take_ID, Msg_Time_Pos_2);
+                                           MIDI_InsertNote(Take_ID,sel,muted, PPQ_Pos, PPQ_Pos_2 , msgChannel, msg2, msg3, 1);
+                                           OK_Send=1;Ins_Note+=1;
+                                           );
+                                       i_2+=4;
+                                       )
+                                  );
+       //==For PKeyPressue,ControlChange,ProgrammChange,ChanPressue,PWheel Change---Insert==//
+       msgType==160 ||  msgType==176 || msgType==192 || msgType==208 || msgType==224  ? 
+            (MIDI_InsertCC(Take_ID,1,0, PPQ_Pos, msgType , msgChannel,  msg2, msg3 );Ins_CC+=1;);
+       i+=4;
+      ); 
+MIDI_Sort(Take_ID);//MIDI_Sort Last_Take
+);
+
+#JS_FX_Name = "ForRetroRec v.20151118";//JS-utility Name
+#JS_Track_Name = "ForRetroRec v.20151118";//JS_Track_Name
+//====Find Track w JS-utility(uses #JS_FX_Name)====//
+i=0;
+loop(CountTracks(0), Cur_Track_ID = GetTrack(0,i);
+     GetSetMediaTrackInfo_String(Cur_Track_ID, "P_NAME", #Curr_Track_Name, 0);
+     stricmp(#JS_Track_Name,#Curr_Track_Name) == 0 ? Track_ID = Cur_Track_ID;
+     i+=1;);
+
+//==Insert Track(if not found);Create JS(if not Exist)==//
+Track_ID == 0 ? 
+ (InsertTrackAtIndex(0,Defaults);TrackList_AdjustWindows(0);//Insert Track
+  Track_ID = GetTrack(0, 0);//Get Track_ID 
+  GetSetMediaTrackInfo_String(Track_ID, "P_NAME", #JS_Track_Name, 1);
+  FX_index = TrackFX_GetByName(Track_ID,#JS_FX_Name,1);//Insert JSFX
+  FX_index<0 ? (MB = MB("The desired JS-utility is not found!\nWould you like to create it?\n(In REAPER\\Effects\\midi folder)", "Info", 0);
+                    //===Create JS in Reaper resoursces folder==//
+                    MB ?  (Create_JS_Utility();FX_index = TrackFX_GetByName(Track_ID,#JS_FX_Name,1);//Create JS//Insert JSFX 
+                           FX_index ? MB("Successfully", "Info", 0) : MB("Failed...", "Info", 0););//Verify                
+                );
+  );
+
+//=====Set Specific Track Parameters====//
+Track_ID ? 
+ (SetMediaTrackInfo_Value(Track_ID,"I_RECARM",1);SetMediaTrackInfo_Value(Track_ID,"I_RECMON",1);//Rec-Arm = Enable//Rec-Monitor = Enable
+  SetMediaTrackInfo_Value(Track_ID,"I_RECINPUT",6112);SetMediaTrackInfo_Value(Track_ID,"I_RECMODE",2);//All MIDI&Channels;Mode=Disable(Mon Only)                    
+  SetMediaTrackInfo_Value(Track_ID, "B_SHOWINTCP", 0);SetMediaTrackInfo_Value(Track_ID, "B_SHOWINMIXER", 0);//Hide TRACK in TCP&Mixer
+  SetMediaTrackInfo_Value(Track_ID, "I_SELECTED", 0);
+  TrackList_AdjustWindows(0);); //Update Tracklist
+
+//=====Read DATA from JS===================================================================================================//
+Track_ID ? Read_Data_From_JS() : MB("The desired JS-utility is not found!\nSee Info in the header of the Script.", "Info", 0);
+
+//=====Insert MIDI-data on the Track (if MIDI-data exist)====//
+MSG_Count ?     //Insert_MIDI(),Implode takes,Activate Last Take,else Inform,if the buffer is empty(type 0=OK)
+  (Insert_MIDI();Main_OnCommand(40543, 0);SetActiveTake(Take_ID);) : MB("MIDI-Buffer is EMPTY", "Info", 0);  
+          
+
+UpdateArrange();
+Undo_EndBlock("~RetroRec:Add MIDI-data on the Selected Track~", -1);//End Undo   
