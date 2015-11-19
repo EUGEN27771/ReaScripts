@@ -93,7 +93,8 @@ function Insert_MIDI()
           (Take_ID ? MIDI_Sort(Take_ID);//MIDI_Sort Prev_Take if Exist
            Item_Start = Min_Pos - Proj_Offset;
            Item_End = Max_Pos - Proj_Offset;
-           Item_ID = CreateNewMIDIItemInProj(Sel_Track_ID, Item_Start, Item_End, qnInOpt);       
+           Item_ID = CreateNewMIDIItemInProj(Sel_Track_ID, Item_Start, Item_End, qnInOpt);
+           SetMediaItemInfo_Value(Item_ID, "B_LOOPSRC", 0);       
            Take_ID = GetActiveTake(Item_ID);//Get Active Take from Item           
            #NewName = #TrackName;
            sprintf(#Item_Number, "%d",j+1);//Num To String(and 1-based count)
