@@ -152,7 +152,7 @@ Track_ID == 0 ?
   FX_index<0 ? (MB = MB("The desired JS-utility is not found!\nWould you like to create it?\n(In REAPER\\Effects\\midi folder)", "Info", 0);
                     //===Create JS in Reaper resoursces folder==//
                     MB ?  (Create_JS_Utility();FX_index = TrackFX_GetByName(Track_ID,#JS_FX_Name,1);//Create JS//Insert JSFX 
-                           FX_index ? MB("Successfully", "Info", 0) : MB("Failed...", "Info", 0););//Verify                
+                           FX_index>=0 ? MB("Successfully", "Info", 0) : MB("Failed...", "Info", 0););//Verify                
                 );
   );
 
@@ -165,7 +165,7 @@ Track_ID ?
   TrackList_AdjustWindows(0);); //Update Tracklist
 
 //=====Read DATA from JS===================================================================================================//
-Track_ID ? Read_Data_From_JS() : MB("The desired JS-utility is not found!\nSee Info in the header of the Script.", "Info", 0);
+Track_ID ? Read_Data_From_JS();
 
 //=====Insert MIDI-data on the Track (if MIDI-data exist)====//
 MSG_Count ?     //Insert_MIDI(),Implode takes,Activate Last Take,else Inform,if the buffer is empty(type 0=OK)
