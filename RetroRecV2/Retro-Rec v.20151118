@@ -136,7 +136,7 @@ MIDI_Sort(Take_ID);//MIDI_Sort Last_Take
 
 #JS_FX_Name = "ForRetroRec v.20151118";//JS-utility Name
 #JS_Track_Name = "ForRetroRec v.20151118";//JS_Track_Name
-//====Find Track w JS-utility(uses #JS_FX_Name)====//
+//====Find Track w JS-utility(uses #JS_Track_Name)====//
 i=0;
 loop(CountTracks(0), Cur_Track_ID = GetTrack(0,i);
      GetSetMediaTrackInfo_String(Cur_Track_ID, "P_NAME", #Curr_Track_Name, 0);
