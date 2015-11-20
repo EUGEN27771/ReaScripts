@@ -2,10 +2,10 @@
 
 Undo_BeginBlock();//Start Undo
 function Create_JS_Utility()
-(  #File_Name = "\\Effects\\midi\\ForRetroRec v.20151118";
+(  #File_Name = "/Effects/midi/ForRetroRec v20151118";
    GetResourcePath(#Path);
    strcat(#Path,#File_Name);
-   JS_FILE = fopen(#Path, "w");//Create JS MIDI_ForRetroRec v.20151118"
+   JS_FILE = fopen(#Path, "w");//Create JS ForRetroRec v20151118"
 ////////////////////////////////////////////////////////////////////////////////////////////////
 //==================JS_Utility TEXT===========================================================//
    fwrite(JS_FILE,"
@@ -134,8 +134,8 @@ function Insert_MIDI()
 MIDI_Sort(Take_ID);//MIDI_Sort Last_Take
 );
 
-#JS_FX_Name = "ForRetroRec v.20151118";//JS-utility Name
-#JS_Track_Name = "ForRetroRec v.20151118";//JS_Track_Name
+#JS_FX_Name = "ForRetroRec v20151118";//JS-utility Name
+#JS_Track_Name = "ForRetroRec v20151118";//JS_Track_Name
 //====Find Track w JS-utility(uses #JS_Track_Name)====//
 i=0;
 loop(CountTracks(0), Cur_Track_ID = GetTrack(0,i);
