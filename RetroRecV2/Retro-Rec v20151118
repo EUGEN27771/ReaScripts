@@ -11,7 +11,7 @@ function Create_JS_Utility()
    fwrite(JS_FILE,"
 This JS-utility is designed for use ONLY in conjunction with a Script-RetroRec.
 JS writes the incoming MIDI-data.The Script retrieves the stored MIDI-data on the sel track.
-desc:ForRetroRec v.20151118
+desc:ForRetroRec v20151118
 slider1:0<0,8388608,1>MSG_Count
 slider2:0<0,2097151,1>MSG_Number
 slider3:0<0,65536,0.001>MSG_Position
