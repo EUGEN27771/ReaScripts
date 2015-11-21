@@ -1,2 +1,0 @@
-# Reaper-Scripts
-Reascripts,EEL
