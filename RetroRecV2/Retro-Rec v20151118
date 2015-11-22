@@ -167,9 +167,9 @@ Track_ID ? Read_Data_From_JS() ?
           (Insert_MIDI(); Main_OnCommand(40543, 0); SetActiveTake(Take_ID);) : MB("MIDI-Buffer is EMPTY", "Info", 0);
        
 #Undo_Text = "~RetroRec: " ;//Undo_Text
-strcat(#Undo_Text,sprintf(#str, "%d", Ins_Note));//Compare Strings 
-strcat(#Undo_Text,"-Notes,");//Compare Strings 
-strcat(#Undo_Text,sprintf(#str, "%d", Ins_CC));//Compare Strings
-strcat(#Undo_Text,"-CC Inserted~");//Compare Strings 
+strcat(#Undo_Text,sprintf(#str, "%d", Ins_Note));//Strings 
+strcat(#Undo_Text,"-Notes,");//Strings 
+strcat(#Undo_Text,sprintf(#str, "%d", Ins_CC));//Strings
+strcat(#Undo_Text,"-CC Inserted~");//Strings 
 Undo_EndBlock(#Undo_Text, -1);//End Undo
 UpdateArrange();
