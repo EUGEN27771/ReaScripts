@@ -1,15 +1,15 @@
 //==v20151118 == Reaper v5.1,SWS 2.8.2
 function Create_JS_Utility()
-(  #File_Name = "/Effects/midi/ForRetroRec v20151118";
-   GetResourcePath(#Path);
-   strcat(#Path,#File_Name);
-   JS_FILE = fopen(#Path, "w");//Create JS ForRetroRec v20151118"
+(  GetResourcePath(#Res_Path);//Get Resouces Path
+   #File_Patch = strcat(#JS_Folder_Name,#JS_FX_Name);//Concat strings
+   #Full_Path = strcat(#Res_Path,#File_Patch);//Concat strings
+   JS_FILE = fopen(#Full_Path, "w");//Create JSFX
 ////////////////////////////////////////////////////////////////////////////////////////////////
 //==================JS_Utility TEXT===========================================================//
    fwrite(JS_FILE,"
 This JS-utility is designed for use ONLY in conjunction with a Script-RetroRec.
 JS writes the incoming MIDI-data.The Script retrieves the stored MIDI-data on the sel track.
-desc:ForRetroRec v20151118
+desc:ForRetroRec(MIDI) v20151118
 slider1:0<0,8388608,1>MSG_Count
 slider2:0<0,2097151,1>MSG_Number
 slider3:0<-4096,65536,0.001>MSG_Position
@@ -51,6 +51,33 @@ JS_FILE;//func return
 //============================================================================================//  
 );//////////////////////////////////////////////////////////////////////////////////////////////
 
+function Find_JS_Track()//==Find Track w JS-utility(uses #JS_Track_Name)==//
+(i=0;loop(CountTracks(0), Cur_Track_ID = GetTrack(0,i);
+ GetSetMediaTrackInfo_String(Cur_Track_ID, "P_NAME", #Curr_Track_Name, 0);
+ stricmp(#JS_Track_Name,#Curr_Track_Name) == 0 ? Track_ID = Cur_Track_ID;i+=1;);
+ Track_ID;//Return
+);  
+
+function Insert_JS_Track()//===Insert Track(if not found);Create JS(if not Exist)===//
+( InsertTrackAtIndex(0,Defaults);TrackList_AdjustWindows(0);//Insert Track
+  Track_ID = GetTrack(0, 0); GetSetMediaTrackInfo_String(Track_ID, "P_NAME", #JS_Track_Name, 1);//Get Track_ID,Set Track Name
+  FX_index = TrackFX_GetByName(Track_ID,#JS_FX_Name,1);//Insert JSFX and Get FX_index 
+     FX_index<0 ? (MB = MB("The desired JS-utility is not found!\nWould you like to create it?\n(In REAPER\\Effects\\utility folder)", "Info", 0);
+                     //===Create JS in Reaper resoursces folder(Patch\REAPER\Effects\midi)==//
+                     MB ?  (Create_JS_Utility() ? FX_index=TrackFX_GetByName(Track_ID,#JS_FX_Name,1);//Create JS//Insert JSFX//Get index 
+                            FX_index==0 ? MB("Successfully!", "Info", 0) : MB("Failed...", "Info", 0););//Verify                
+                   );//End Create&Insert JSFX
+    //=====Set Specific Track_Parameters==============//
+     Track_ID>0 && FX_index==0 ? 
+     (SetMediaTrackInfo_Value(Track_ID,"I_RECARM",1);SetMediaTrackInfo_Value(Track_ID,"I_RECMON",1);//Rec-Arm = Enable//Rec-Monitor = Enable
+      SetMediaTrackInfo_Value(Track_ID,"I_RECINPUT",Rec_IN);SetMediaTrackInfo_Value(Track_ID,"I_RECMODE",2);//Set Rec_IN and Mode=Disable(Mon Only)  
+      SetMediaTrackInfo_Value(Track_ID,"I_SELECTED",0);//Unselect Track
+         MB("Hide JS-Track?","Info",1)==1 ? //Hide TRACK in TCP&Mixer if need
+           (SetMediaTrackInfo_Value(Track_ID,"B_SHOWINTCP",0);SetMediaTrackInfo_Value(Track_ID,"B_SHOWINMIXER",0););  
+      TrackList_AdjustWindows(0););//Update Tracklist  
+ Track_ID;//Return
+);
+
 function Read_Data_From_JS()//===READ DATA FROM JSFX(ForRetroRec)===//
 ( //=======Calculate Proj_Offset====//
   Comp_Latency = TrackFX_GetParam(Track_ID, FX_index,6, minval, maxval);//Get "Compensate latency" slider value 
@@ -83,10 +110,7 @@ MSG_Count;//func return
 );     
 function Insert_MIDI()       
 ( //======Start MAIN Function=====//
-  Sel_Track_ID = GetSelectedTrack(0,0);//Get 1-st selected Track ID(For ADD MIDI-DATA)
-  GetSetMediaTrackInfo_String(Sel_Track_ID, "P_NAME", #TrackName, 0);//Get Track Name(for rename New Item-Takes)  
   SetOnlyTrackSelected(Sel_Track_ID);SelectAllMediaItems(0,0);//Select-ONLY TRACK and UNSEL ALL ITEMS in Project
-  //=====
   i=0;j=0;
   loop(MSG_Count,//=======Create MIDI-Item=========// 
        buf[new_itm+j] == i/4 ? //Find "TRIGGER" and Create New Item,if trig found
@@ -98,7 +122,7 @@ function Insert_MIDI()
            Take_ID = GetActiveTake(Item_ID);//Get Active Take from Item           
            #NewName = #TrackName;
            sprintf(#Item_Number, "%d",j+1);//Num To String(and 1-based count)
-           strcat(#NewName,#Item_Number);// Name + NUMBER           
+           strcat(#NewName,#Item_Number);//Name + NUMBER           
            GetSetMediaItemTakeInfo_String(Take_ID, "P_NAME", #NewName , 1);//Rename Item to parent Track name+Number
            SetMediaItemSelected(Item_ID, 1);//SELECT NEW ITEM!
            j+=1;);       
@@ -133,39 +157,26 @@ function Insert_MIDI()
       ); 
 MIDI_Sort(Take_ID);//MIDI_Sort Last_Take
 );
-//=====Names====//
-#JS_FX_Name = "ForRetroRec v20151118";//JS-utility Name
-#JS_Track_Name = "ForRetroRec v20151118";//JS_Track_Name
-///====Find Track w JS-utility(uses #JS_Track_Name)====//
-i=0;loop(CountTracks(0), Cur_Track_ID = GetTrack(0,i);
-GetSetMediaTrackInfo_String(Cur_Track_ID, "P_NAME", #Curr_Track_Name, 0);
-stricmp(#JS_Track_Name,#Curr_Track_Name) == 0 ? Track_ID = Cur_Track_ID;i+=1;);
-     
-//==Insert Track(if not found);Create JS(if not Exist)==//
-Track_ID == 0 ? 
- (InsertTrackAtIndex(0,Defaults);TrackList_AdjustWindows(0);//Insert Track
-  Track_ID = GetTrack(0, 0); GetSetMediaTrackInfo_String(Track_ID, "P_NAME", #JS_Track_Name, 1);//Get Track_ID,Set Track Name
-  FX_index = TrackFX_GetByName(Track_ID,#JS_FX_Name,1);//Insert JSFX and Get FX_index 
-     FX_index<0 ? (MB = MB("The desired JS-utility is not found!\nWould you like to create it?\n(In REAPER\\Effects\\midi folder)", "Info", 0);
-                     //===Create JS in Reaper resoursces folder(Patch\REAPER\Effects\midi)==//
-                     MB ?  (Create_JS_Utility() ? FX_index=TrackFX_GetByName(Track_ID,#JS_FX_Name,1);//Create JS//Insert JSFX//Get index 
-                            FX_index==0 ? MB("Successfully!", "Info", 0) : MB("Failed...", "Info", 0););//Verify                
-                   );//End Create&Insert JSFX
-    //=====Set Specific Track_Parameters==============//
-     Track_ID && FX_index==0 ? 
-     (SetMediaTrackInfo_Value(Track_ID,"I_RECARM",1);SetMediaTrackInfo_Value(Track_ID,"I_RECMON",1);//Rec-Arm = Enable//Rec-Monitor = Enable
-      SetMediaTrackInfo_Value(Track_ID,"I_RECINPUT",6112);SetMediaTrackInfo_Value(Track_ID,"I_RECMODE",2);//All MIDI&Channels;Mode=Disable(Mon Only)  
-      SetMediaTrackInfo_Value(Track_ID, "I_SELECTED", 0);//Unselect Track
-      MB("Hide JS-Track?","Info",1)==1 ? //Hide TRACK in TCP&Mixer if need
-        (SetMediaTrackInfo_Value(Track_ID, "B_SHOWINTCP", 0);SetMediaTrackInfo_Value(Track_ID, "B_SHOWINMIXER", 0););  
-      TrackList_AdjustWindows(0);); //Update Tracklist  
-  );
 
-//==Read DATA from JS;Insert MIDI-data on the Track(if exist);Implode takes,Activate Last Take;Else Inform,if the buffer is empty==//
+//===========Basic Names and Main Data==========//
+#JS_FX_Name = "ForRetroRec(MIDI) v20151118";//JS-utility Name
+#JS_Folder_Name = "/Effects/utility/";//Destination folder
+#JS_Track_Name = #JS_FX_Name;//JS_Track_Name(the same as JS_FX_Name)
+Rec_IN = 6112;//6112=All MIDI & All Channels
+
+//====Find_JS_Track====Insert,IF Track w JS-utility not Found====//
+Find_JS_Track() == 0 ? Insert_JS_Track();//Insert Track and JS(Create JS,if need) 
+
+Sel_Track_ID = GetSelectedTrack(0,0);//Get 1-st selected Track ID(For ADD MIDI-DATA)
+GetSetMediaTrackInfo_String(Sel_Track_ID, "P_NAME", #TrackName, 0);//Get Sel_Track_Name(for rename New Item-Takes)  
+
 Undo_BeginBlock();//Start Undo  
-Track_ID ? Read_Data_From_JS() ?  
-          (Insert_MIDI(); Main_OnCommand(40543, 0); SetActiveTake(Take_ID);) : MB("MIDI-Buffer is EMPTY", "Info", 0);
-       
+//==Read DATA from JS==Else Inform,if no sel Tracks==//
+Sel_Track_ID ? Read_Data_From_JS() : MB("No Tracks(for Insert MIDI) Selected!", "Info", 0);
+//==Insert MIDI-data on the Track(if exist);Implode takes,Activate Last Take==//
+MSG_Count ? (Insert_MIDI(); Main_OnCommand(40543, 0); SetActiveTake(Take_ID);) :
+             MB("MIDI-Buffer is EMPTY", "Info", 0);//Inform,if the buffer is empty
+//==Create #Undo_Text==//       
 #Undo_Text = "~RetroRec: " ;//Undo_Text
 strcat(#Undo_Text,sprintf(#str, "%d", Ins_Note));//Strings 
 strcat(#Undo_Text,"-Notes,");//Strings 
