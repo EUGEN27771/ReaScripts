@@ -141,7 +141,7 @@ function Insert_MIDI()
                                        msg2_2 = buf[i+2+i_2];
                                        msg3_2 = buf[i+3+i_2];
                                     
-                                       msgType_2=128 && msgChannel_2==msgChannel && msg2_2==msg2 && Off_Send==0 ?
+                                      (msgType_2==128||(msgType_2==144&&msg3_2==0)) && msgChannel_2==msgChannel && msg2_2==msg2 && Off_Send==0 ?
                                           (Msg_Time_Pos_2 = buf[i+i_2]-Proj_Offset;
                                            PPQ_Pos_2 = MIDI_GetPPQPosFromProjTime(Take_ID, Msg_Time_Pos_2);
                                            MIDI_InsertNote(Take_ID,sel,muted, PPQ_Pos, PPQ_Pos_2 , msgChannel, msg2, msg3, 1);
