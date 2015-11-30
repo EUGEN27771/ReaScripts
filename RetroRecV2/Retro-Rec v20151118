@@ -90,7 +90,6 @@ function Read_Data_From_JS()//===READ DATA FROM JSFX(ForRetroRec)===//
      
   MSG_Count = TrackFX_GetParam(Track_ID, FX_index,0, minval, maxval);//Get MSG_Count from JS
   //======Read MIDI-DATA========//
-  new_itm = 8384512;//buffer offset
   i=0;j=0;
   loop(MSG_Count,
        TrackFX_SetParam(Track_ID, FX_index, 1, i/4);//Set MSG_Number(i/4=MSG_Number 0-based)
@@ -102,8 +101,8 @@ function Read_Data_From_JS()//===READ DATA FROM JSFX(ForRetroRec)===//
             //Update Min_Pos and Max_Pos//            
             Min_Pos=min(Min_Pos,buf[i]);//Update Min Position
             Max_Pos=max(Max_Pos,buf[i]);//Update Max Position
-            //==Analize MSG_Position and Save MSG_Number to buf[new_itm+.] IF Current Pos<Prev Pos      
-            (i>=4 && buf[i]<buf[i-4]) ? (j+=1; buf[new_itm+j] = i/4;);//MSG_Number will be used as TRIGGER to create New Items           
+            //==Analize MSG_Position and Save MSG_Number to items[j] IF Current Pos<Prev Pos      
+            (i>=4 && buf[i]<buf[i-4]) ? (j+=1; items[j] = i/4;);//MSG_Number will be used as TRIGGER to create New Items           
        i+=4;
        );  
 MSG_Count;//func return
@@ -113,7 +112,7 @@ function Insert_MIDI()
   SetOnlyTrackSelected(Sel_Track_ID);SelectAllMediaItems(0,0);//Select-ONLY TRACK and UNSEL ALL ITEMS in Project
   i=0;j=0;
   loop(MSG_Count,//=======Create MIDI-Item=========// 
-       buf[new_itm+j] == i/4 ? //Find "TRIGGER" and Create New Item,if trig found
+       items[j] == i/4 ? //Find "TRIGGER" and Create New Item,if trig found
           (Take_ID ? MIDI_Sort(Take_ID);//MIDI_Sort Prev_Take if Exist
            Item_Start = Min_Pos - Proj_Offset;
            Item_End = Max_Pos - Proj_Offset;
@@ -134,15 +133,15 @@ function Insert_MIDI()
        msg2 = buf[i+2];
        msg3 = buf[i+3];
        //==For each Note ON(144)-------Find Note OFF(128)-------and Insert Note==//
-       msgType==144 && msg3>0  ? (i_2=4;Off_Send=0;
+       msgType==144 && msg3>0  ? (Off_Send=0; i_2=i+4;
                                   loop(MSG_Count-(i/4+1),
-                                       msgType_2 = (buf[i+1+i_2] & 240 );
-                                       msgChannel_2 = (buf[i+1+i_2] & 15);
-                                       msg2_2 = buf[i+2+i_2];
-                                       msg3_2 = buf[i+3+i_2];
+                                       msgType_2 = (buf[i_2+1] & 240 );
+                                       msgChannel_2 = (buf[i_2+1] & 15);
+                                       msg2_2 = buf[i_2+2];
+                                       msg3_2 = buf[i_2+3];
                                     
                                       (msgType_2==128||(msgType_2==144&&msg3_2==0)) && msgChannel_2==msgChannel && msg2_2==msg2 && Off_Send==0 ?
-                                          (Msg_Time_Pos_2 = buf[i+i_2]-Proj_Offset;
+                                          (Msg_Time_Pos_2 = buf[i_2]-Proj_Offset;
                                            PPQ_Pos_2 = MIDI_GetPPQPosFromProjTime(Take_ID, Msg_Time_Pos_2);
                                            MIDI_InsertNote(Take_ID,sel,muted, PPQ_Pos, PPQ_Pos_2 , msgChannel, msg2, msg3, 1);
                                            Off_Send=1;Ins_Note+=1;
@@ -163,6 +162,8 @@ MIDI_Sort(Take_ID);//MIDI_Sort Last_Take
 #JS_Folder_Name = "/Effects/utility/";//Destination folder
 #JS_Track_Name = #JS_FX_Name;//JS_Track_Name(the same as JS_FX_Name)
 Rec_IN = 6112;//6112=All MIDI & All Channels
+buf=0;//buffer offset
+items = 8384512;//buffer offset
 
 //====Find_JS_Track====Insert,IF Track w JS-utility not Found====//
 Find_JS_Track() == 0 ? Insert_JS_Track();//Insert Track and JS(Create JS,if need) 
