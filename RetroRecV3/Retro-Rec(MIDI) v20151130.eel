@@ -162,8 +162,8 @@ function Insert_MIDI()
   SetOnlyTrackSelected(Sel_Track_ID);//Select-ONLY TRACK 
   i=0;j=0;Take_ID=0;
   loop(MSG_Count,  
-       Take_ID ? MIDI_Sort(Take_ID);//MIDI_Sort Prev_Take if Exist
-       i/4==items[j] ? (Take_ID=items[j+1];j+=4;);//Set Item for Insert MIDI
+       i/4==items[j] ? (Take_ID ? MIDI_Sort(Take_ID);//MIDI_Sort Prev_Take if Exist
+                        Take_ID=items[j+1]; j+=4; );//Set New Take for Insert MIDI
        
        //=========Create MIDI-EVENTS in Current Item============// 
        Msg_Time_Pos = buf[i]-(Proj_Offset+Latency); 
