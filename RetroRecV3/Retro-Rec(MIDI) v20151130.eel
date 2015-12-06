@@ -109,40 +109,44 @@ function Read_Data_From_JS()//===READ DATA FROM JSFX(ForRetroRec)===//
   Item_Count = TrackFX_GetParam(Track_ID,FX_index,4,minval,maxval);    
   Comp_Latency ? Latency=B_Latency+GetOutputLatency() : Latency=0;//Total Latency
   Proj_Offset = GetProjectTimeOffset(0, rndframe);//Project Offset
-     //==Initial Min_Pos=Max_Pos = 0-st MSG_Play_Position
-     TrackFX_SetParam(Track_ID, FX_index, 1, 0);//Set 0-st MSG 
-     Min_Pos=Max_Pos=TrackFX_GetParam(Track_ID, FX_index,2, minval, maxval);//Get Value
   
   //======Read MIDI-DATA and Pos Change Data========//  
   i=0;j=0;
   loop(MSG_Count,
        TrackFX_SetParam(Track_ID, FX_index, 1, i/4);//Set MSG_Number(i/4=MSG_Number 0-based)
-          buf[i] = TrackFX_GetParam(Track_ID, FX_index,2, minval, maxval);//Get MSG_Play_Position            
+          buf[i] = TrackFX_GetParam(Track_ID, FX_index,2, minval, maxval);//Get MSG_Position            
           //Read msg1,2,3//
           buf[i+1] = TrackFX_GetParam(Track_ID, FX_index,3, minval, maxval);//Get msg1
           buf[i+2] = TrackFX_GetParam(Track_ID, FX_index,4, minval, maxval);//Get msg2
           buf[i+3] = TrackFX_GetParam(Track_ID, FX_index,5, minval, maxval);//Get msg3            
-            //Update Min_Pos and Max_Pos//            
-            Min_Pos=min(Min_Pos,buf[i]);//Update Min Position
-            Max_Pos=max(Max_Pos,buf[i]);//Update Max Position
+           
            //=====Analize and Save Items-Data to items[.,.,.,.]======//
             buf[i+1]==-1 ? (items[j]=i/4;//First Msg Num in Item(0-based)
-                            items[j+1]=0;//It must be ID(in feauture)
+                            items[j+1]=0;//Take_ID(Will be assigned later)
                             items[j+2]=buf[i];);//Item Start Pos                    
             buf[i+1]==-2 ? (items[j+3]=buf[i];//Item End Pos
                             j+=4;);//j+=4=Next cycle
        i+=4;    
        );  
   //============First and Last Msg in First and Last Items=================//
-  items[0]=0;//First Msg in 0-st Item Num*
-  items[0+1]=0;//ID(in feauture)*
-  items[0+2]=buf[0];//0-st Start=0-st MsgPos*
-  items[j+3]=buf[i-4];//Last Item End=Last MsgPos*
+  items[0]=0;//0-st Msg in 0-st Item Num(anyway)*
+  items[0+1]=0;//Take_ID(Will be assigned later)
+  items[0+2]=buf[0]-Latency;//0-st Start=0-st MsgPos(anyway)*
+  items[j+3]=buf[i-4]-Latency;//Last Item End=Last MsgPos(anyway)*
+  
+  //======Analize and Update Min_Pos and Max_Pos for Items======//
+  j=0; Min_Pos=buf[0]; Max_Pos=buf[i-4];//==Initial Min_Pos,Max_Pos
+  loop(Item_Count,
+          Min_Pos=min(Min_Pos,items[j+2]);//Update Min Position
+          Max_Pos=max(Max_Pos,items[j+3]);//Update Max Position
+       j+=4;
+       );
+    
   //====================Create Items and save ID to items[j+1]=================================// 
     j=0; SelectAllMediaItems(0,0);//UNSEL ALL ITEMS in Project
     loop(Item_Count,
-           Item_Start = Min_Pos-Proj_Offset;//items[j+2]- Proj_Offset;//
-           Item_End   = Max_Pos-Proj_Offset;//items[j+3]- Proj_Offset;//
+           Item_Start = Min_Pos-Proj_Offset;//items[j+2]- Proj_Offset;//v1
+           Item_End   = Max_Pos-Proj_Offset;//items[j+3]- Proj_Offset;//v1
            Item_ID = CreateNewMIDIItemInProj(Sel_Track_ID, Item_Start, Item_End, qnInOpt);
            SetMediaItemInfo_Value(Item_ID, "B_LOOPSRC", 0);       
            Take_ID = GetActiveTake(Item_ID);//Get Active Take from Item 
@@ -151,7 +155,7 @@ function Read_Data_From_JS()//===READ DATA FROM JSFX(ForRetroRec)===//
            sprintf(#Item_Number, "%d",j/4+1);//j/4+1(Num To String(and 1-based count))
            strcat(#NewName,#Item_Number);//Name + NUMBER           
            GetSetMediaItemTakeInfo_String(Take_ID, "P_NAME", #NewName , 1);//Rename Item to parent Track name+Number
-           SetMediaItemSelected(Item_ID, 1);//SELECT NEW ITEM!*/   
+           SetMediaItemSelected(Item_ID, 1);//SELECT NEW ITEM!*  
         j+=4;
         );        
  MSG_Count;//func return
