@@ -72,7 +72,7 @@ function Insert_JS_Track()//===Insert Track(if not found);Create JS(if not Exist
         Main_OnCommandEx(NamedCommandLookup("_S&M_COPYFXCHAIN5"), 0, 0);
           GetUserInputs("Set  the  number  of  buffers", 1 , "Set number of buffers(5-50):", #Buffs);//Set
           match("%i",#Buffs, Buffs);//as Integer = Buffs
-          Buffs<5 ?  Buffs=5; Buffs>50 ? Buffs=50;//If user set <1 or >100 
+          Buffs<5 ?  Buffs=5; Buffs>50 ? Buffs=50;//If user set <5 or >50 
         loop(Buffs-1, Main_OnCommandEx(NamedCommandLookup("_S&M_COPYFXCHAIN10"), 0, 0); );
         );    
     //=====Set Specific Track_Parameters==============//
