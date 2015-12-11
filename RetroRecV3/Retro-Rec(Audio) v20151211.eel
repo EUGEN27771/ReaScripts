@@ -138,7 +138,7 @@ function Set_JS_Parameters()//==Set Parameters in JS for Insert Audio==//
 );
 
 function Main()//==Its Main function,it call other functions==//
-(Buf_Start=TrackFX_GetParam(Track_ID,FX_index,0,minval,maxval);//Get Buf_Start from JS 
+(Buf_Start=TrackFX_GetParam(Track_ID,FX_index,0,minval,maxval)-Proj_Offset;//Get Buf_Start from JS 
  Lenght=TrackFX_GetParam(Track_ID,FX_index,1,minval,maxval);//Get Lenght from JS
    FX_index==0 ? (Min_Pos=Buf_Start;Max_Pos=Buf_Start+Lenght;);//Initial Min-Max Positions 
    FX_index>0 && (Buf_End-Buf_Start)>0.0001 ? Glue_Items();//IF Prev_End>Current_Start Glue Prev_Selected Items
@@ -163,7 +163,8 @@ Find_JS_Track() == 0 ? Insert_JS_Track();//Insert Track and JS(Create JS,if need
 Sel_Track_ID = GetSelectedTrack(0,0);//Get 1-st selected Track ID(For ADD AUDIO-DATA)
 GetSetMediaTrackInfo_String(Sel_Track_ID, "P_NAME", #TrackName, 0);//Get Sel_Track_Name(for rename New Item-Takes)
 Track_Num = GetMediaTrackInfo_Value(Sel_Track_ID, "IP_TRACKNUMBER");//Get Track Number
-JS_FX_Count = TrackFX_GetCount(Track_ID);
+JS_FX_Count = TrackFX_GetCount(Track_ID);//Get JS_FX_Count
+Proj_Offset = GetProjectTimeOffset(0, rndframe);//Project Offset
 
 //====Insert Audio on the Track(if exist)====//
 Sel_Track_ID ? (SelectAllMediaItems(0,0); Main(););//Execute Main and all incusive functions
