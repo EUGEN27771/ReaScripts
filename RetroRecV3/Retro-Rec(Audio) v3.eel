@@ -104,9 +104,9 @@ function Insert_JS_Track()//===Insert Track(if not found);Create JS(if not Exist
            //=====Clone JSFX(aka Buffers)-for RRAudio ONLY=====//
            RR_Type ? (SetOnlyTrackSelected(Track_ID);//Select Only! JS_Track
                       Main_OnCommandEx(NamedCommandLookup("_S&M_COPYFXCHAIN5"), 0, 0);//Copy JS
-                      GetUserInputs("Set  the  number  of  buffers", 1 , "Set number of buffers(4-16):", #Buffs);//Set
+                      GetUserInputs("Set  the  number  of  buffers", 1 , "Set number of buffers(1-16):", #Buffs);//Set
                       match("%i",#Buffs, Buffs);//as Integer = Buffs
-                      Buffs<4 ?  Buffs=4; Buffs>16 ? Buffs=16;//If user set val<5 or val>50 
+                      Buffs<1 ?  Buffs=1; Buffs>16 ? Buffs=16;//If user set val<1 or val>16
                       loop(Buffs-1, Main_OnCommandEx(NamedCommandLookup("_S&M_COPYFXCHAIN10"),0,0);); );//Paste(clone) JS              
       SetMediaTrackInfo_Value(Track_ID,"I_SELECTED",0);//Unselect Track
       TrackList_AdjustWindows(0);//Update Tracklist
@@ -196,7 +196,7 @@ function Main()
 #JS_FX_Name = "ForRetroRec(Audio) v20151213(b1)";//JS-utility Name
 #JS_Folder_Name = "/Effects/utility/";//Destination folder
 #JS_Track_Name = #JS_FX_Name;//JS_Track_Name(the same as JS_FX_Name)
-#Buffs="4";//Default Buffs Value in UserInput
+#Buffs="2";//Default Buffs Value in UserInput
 RR_Type = 1;//RR_FLAG(0=RRMidi;1=RRAudio)
 Rec_IN = 1024;//1024=Stereo Channels
 RESET=1;//RESET After ALL Audio Inserted(0=No,1=Yes)
