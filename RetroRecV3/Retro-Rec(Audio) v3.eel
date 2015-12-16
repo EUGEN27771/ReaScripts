@@ -143,7 +143,8 @@ function Implode_Glued_Items()
        Main_OnCommand(40543, 0);//Implode Selected Items into Takes 
        Item_Number+=1;
        );
-RESET ? (FX_index=0;loop(JS_FX_Count,TrackFX_SetParam(Track_ID,FX_index,5,8192);FX_index+=1;););//RESET JS After Script Executed
+Main_OnCommand(NamedCommandLookup("_XENAKIOS_SELECTLASTTAKEOFITEMS"), 0);//Select Last Take in Item      
+RESET ? (FX_index=0;loop(JS_FX_Count,TrackFX_SetParam(Track_ID,FX_index,5,8192);FX_index+=1;););//RESET JSs After Script Executed
 UpdateArrange();//Update the arrangement 
 );
 //====================================================================================================================//
