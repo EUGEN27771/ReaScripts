@@ -66,7 +66,6 @@ function Main()
 end 
 
 ----------------------------------
-Transpose = 1--(1 = Up, -1 = Down)
 reaper.Undo_BeginBlock()
 Main()--execute function
-reaper.Undo_EndBlock("KeySnap_Transpose_Up", -1)
+reaper.Undo_EndBlock("KeySnap", -1)
