@@ -3,15 +3,15 @@
 //==================JS_RRMidi TEXT(Do not change this text!!!)================================//
 #JS_RRMidi = "
 desc:ForRetroRec(MIDI) v20151213
-slider1:0<0,8388608,1>MSG_Count
-slider2:0<0,2097151,1>MSG_Number
-slider3:0<-4096,65536,0.001>MSG_Position
-slider4:0<0,256,1>msg1
-slider5:0<0,127,1>msg2
-slider6:0<0,127,1>msg3
+slider1:0<0,8388608,1>-MSG_Count
+slider2:0<0,2097151,1>-MSG_Number
+slider3:0<-4096,65536,0.001>-MSG_Position
+slider4:0<0,256,1>-msg1
+slider5:0<0,127,1>-msg2
+slider6:0<0,127,1>-msg3
 slider7:1<0,1,1{No(As Rec Out Mode),Yes(As Rec Normal Mode)}>Compensate Latency
 slider8:0<0,1,1{Only when you press Play,At each change of Playposition}>ReWrite Buffer
-slider9:0<0,8192,1>data
+slider9:0<0,8192,1>-data
 in_pin:none
 out_pin:none
 @slider 
