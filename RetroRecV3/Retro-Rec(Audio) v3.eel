@@ -4,12 +4,12 @@
 #JS_RRAudio = "
 desc:ForRetroRec(Audio) v20151213(b1)
 options:maxmem=33554432
-slider1:1<0,4096,1>Track Number
-slider2:0<0,1,1>Insert Audio
-slider3:0<0,4095,1>Slot
-slider4:0<0,33554432,1>DATA
+slider1:1<0,4096,1>-Track Number
+slider2:0<0,1,1>-Insert Audio
+slider3:0<0,4095,1>-Slot
+slider4:0<0,33554432,1>-DATA
 slider5:1<0,1,1{No(As Rec Out Mode),Yes(As Rec Normal Mode)}>Compensate Latency
-slider6:0<0,8192,1>data
+slider6:0<0,8192,1>-data
 @init
 ext_noinit=1;
 buf=0;
