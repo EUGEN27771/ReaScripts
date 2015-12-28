@@ -8,8 +8,8 @@ function non_destr_explode()
       SourceNChan = reaper.GetMediaSourceNumChannels(PCM_source)--Num Chan in source
       Item_Track = reaper.GetMediaItem_Track(Item_ID)--Get Item Track
       Track_Num = reaper.GetMediaTrackInfo_Value(Item_Track, "IP_TRACKNUMBER")--get Item track number(1-based)
-       --For each Source Channeel--
-        index = Track_Num-1--Item_Track index     
+       index = Track_Num-1--Original Item_Track index 
+       --For each Source Channeel--  
         for i=1, SourceNChan, 1 do
         reaper.InsertTrackAtIndex(index+i, 0)--New_Track
         New_Track_ID = reaper.GetTrack(0, index+i)--Get New_Track ID
