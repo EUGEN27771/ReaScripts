@@ -1,0 +1,59 @@
+--Open Item(Var Actions depending of item source)--
+--Open the Action list, right-click on the Action and Copy Sel Action ID--
+--Insert the ID in the second column--
+--For text ID used quotes--
+--For no-action used zero--
+--------------------------
+--SourceType = Action ID-- 
+--------------------------
+  MIDI       =    40153
+  WAVE       =    "_SWS_TOGZOOMHORIZ"
+  EMPTY      =    40850
+  REX        =    "_SWS_TOGZOOMHORIZ"
+  FLAC       =    "_SWS_TOGZOOMHORIZ"
+  MP3        =    "_SWS_TOGZOOMHORIZ"
+  CLICK      =    0
+--if no sel item or no-action(0)--
+  NoSelItem  =    40113
+--------------------------
+---------------------------------------------------------------------
+function Get_Source_Type(Item_ID)
+ if Item_ID then
+    Take_ID=reaper.GetActiveTake(Item_ID)--Get Active Take(from Item)
+    if Take_ID~=nil then
+       FastString = reaper.SNM_CreateFastString( FastString )--Create FS
+       SourceType = reaper.SNM_GetSourceType(Take_ID, FastString )--Get SourceType
+       S_Type = reaper.SNM_GetFastString( FastString )--Get FS
+       reaper.SNM_DeleteFastString( FastString )--Del FS
+    else S_Type = "EMPTY" 
+    end
+ end    
+return S_Type
+end
+
+function Set_ID(S_Type)
+ if     S_Type == "MIDI"    then ID = MIDI
+ elseif S_Type == "WAVE"    then ID = WAVE
+ elseif S_Type == "EMPTY"   then ID = EMPTY
+ elseif S_Type == "REX"     then ID = REX
+ elseif S_Type == "FLAC"    then ID = FLAC
+ elseif S_Type ==  "MP3"    then ID = FLAC
+ elseif S_Type == "CLICK"   then ID = CLICK
+ end
+ --if non-native action--
+ if ID and type(ID)=="string" then 
+    ID = reaper.NamedCommandLookup(ID)
+ end
+ --if action no assigned--
+ if S_Type==nil or ID==0 then 
+    ID = NoSelItem --Action for others
+ end 
+
+return ID
+end
+
+----------------------------------------
+Item_ID=reaper.GetSelectedMediaItem(0, 0)
+Get_Source_Type(Item_ID)
+Set_ID(S_Type)
+reaper.Main_OnCommandEx(ID,0, 0)
