@@ -52,8 +52,15 @@ function Set_ID(S_Type)
 return ID
 end
 
+function Run_Action()
+reaper.Undo_BeginBlock()
+reaper.Main_OnCommandEx(ID,0, 0)
+reaper.Undo_EndBlock("Run_Action", -1)
+end
+
 ----------------------------------------
 Item_ID=reaper.GetSelectedMediaItem(0, 0)
 Get_Source_Type(Item_ID)
 Set_ID(S_Type)
-reaper.Main_OnCommandEx(ID,0, 0)
+reaper.defer(Run_Action)
+
