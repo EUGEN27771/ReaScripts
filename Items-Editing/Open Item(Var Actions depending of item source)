@@ -12,7 +12,9 @@
   REX        =    "_SWS_TOGZOOMHORIZ"
   FLAC       =    "_SWS_TOGZOOMHORIZ"
   MP3        =    "_SWS_TOGZOOMHORIZ"
+  VIDEO      =    50125
   CLICK      =    0
+  
 --if no sel item or no-action(0)--
   NoSelItem  =    40113
 --------------------------
@@ -37,7 +39,8 @@ function Set_ID(S_Type)
  elseif S_Type == "EMPTY"   then ID = EMPTY
  elseif S_Type == "REX"     then ID = REX
  elseif S_Type == "FLAC"    then ID = FLAC
- elseif S_Type ==  "MP3"    then ID = FLAC
+ elseif S_Type == "MP3"     then ID = MP3
+ elseif S_Type == "VIDEO"   then ID = VIDEO
  elseif S_Type == "CLICK"   then ID = CLICK
  end
  --if non-native action--
@@ -45,7 +48,7 @@ function Set_ID(S_Type)
     ID = reaper.NamedCommandLookup(ID)
  end
  --if action no assigned--
- if S_Type==nil or ID==0 then 
+ if S_Type==nil or ID==nil or ID==0 then 
     ID = NoSelItem --Action for others
  end 
 
@@ -63,4 +66,3 @@ Item_ID=reaper.GetSelectedMediaItem(0, 0)
 Get_Source_Type(Item_ID)
 Set_ID(S_Type)
 reaper.defer(Run_Action)
-
