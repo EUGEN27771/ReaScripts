@@ -6,27 +6,30 @@
 --------------------------
 --SourceType = Action ID-- 
 --------------------------
-  MIDI       =    40153
-  WAVE       =    "_SWS_TOGZOOMHORIZ"
-  EMPTY      =    40850
-  REX        =    "_SWS_TOGZOOMHORIZ"
-  FLAC       =    "_SWS_TOGZOOMHORIZ"
-  MP3        =    "_SWS_TOGZOOMHORIZ"
-  VIDEO      =    50125
-  CLICK      =    0
-  
+  MIDI          =    40153
+  EMPTY         =    40850
+  WAVE          =    "_SWS_TOGZOOMHORIZ"
+  REX           =    "_SWS_TOGZOOMHORIZ"
+  FLAC          =    "_SWS_TOGZOOMHORIZ"
+  MP3           =    "_SWS_TOGZOOMHORIZ"
+  VIDEO         =    50125
+  CLICK         =    40011
+  RPP_PROJECT   =    41816
+
 --if no sel item or no-action(0)--
-  NoSelItem  =    40113
+  NoSelItem     =    40113
 --------------------------
 ---------------------------------------------------------------------
 function Get_Source_Type(Item_ID)
  if Item_ID then
     Take_ID=reaper.GetActiveTake(Item_ID)--Get Active Take(from Item)
     if Take_ID~=nil then
-       FastString = reaper.SNM_CreateFastString( FastString )--Create FS
-       SourceType = reaper.SNM_GetSourceType(Take_ID, FastString )--Get SourceType
-       S_Type = reaper.SNM_GetFastString( FastString )--Get FS
-       reaper.SNM_DeleteFastString( FastString )--Del FS
+       PCM_source = reaper.GetMediaItemTake_Source(Take_ID)
+       S_Type = reaper.GetMediaSourceType(PCM_source,"")
+       if S_Type == "SECTION" then
+          PCM_source = reaper.GetMediaSourceParent(PCM_source)
+          S_Type = reaper.GetMediaSourceType(PCM_source,"")
+       end
     else S_Type = "EMPTY" 
     end
  end    
@@ -34,14 +37,15 @@ return S_Type
 end
 
 function Set_ID(S_Type)
- if     S_Type == "MIDI"    then ID = MIDI
- elseif S_Type == "WAVE"    then ID = WAVE
- elseif S_Type == "EMPTY"   then ID = EMPTY
- elseif S_Type == "REX"     then ID = REX
- elseif S_Type == "FLAC"    then ID = FLAC
- elseif S_Type == "MP3"     then ID = MP3
- elseif S_Type == "VIDEO"   then ID = VIDEO
- elseif S_Type == "CLICK"   then ID = CLICK
+ if     S_Type == "MIDI"          then ID = MIDI
+ elseif S_Type == "EMPTY"         then ID = EMPTY
+ elseif S_Type == "WAVE"          then ID = WAVE
+ elseif S_Type == "REX"           then ID = REX
+ elseif S_Type == "FLAC"          then ID = FLAC
+ elseif S_Type == "MP3"           then ID = MP3
+ elseif S_Type == "VIDEO"         then ID = VIDEO
+ elseif S_Type == "CLICK"         then ID = CLICK
+ elseif S_Type == "RPP_PROJECT"   then ID = RPP_PROJECT
  end
  --if non-native action--
  if ID and type(ID)=="string" then 
