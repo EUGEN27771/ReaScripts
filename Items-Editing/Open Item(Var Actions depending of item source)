@@ -3,20 +3,27 @@
 --Insert the ID in the second column--
 --For text ID used quotes--
 --For no-action used zero--
---------------------------
---SourceType = Action ID-- 
---------------------------
+---------------------------------
+--SourceType    =     Action ID-- 
+---------------------------------
+  --Midi Files--
   MIDI          =    40153
-  EMPTY         =    40850
-  WAVE          =    "_SWS_TOGZOOMHORIZ"
-  REX           =    "_SWS_TOGZOOMHORIZ"
-  FLAC          =    "_SWS_TOGZOOMHORIZ"
-  MP3           =    "_SWS_TOGZOOMHORIZ"
+  --Audio Files--
+  WAVE          =    "_SWS_TOGZOOMIONLY"
+  REX           =    "_SWS_TOGZOOMIONLY"
+  FLAC          =    "_SWS_TOGZOOMIONLY"
+  MP3           =    "_SWS_TOGZOOMIONLY"
+  VORBIS        =    "_SWS_TOGZOOMIONLY"
+  OPUS          =    "_SWS_TOGZOOMIONLY"
+  --Video Files--
   VIDEO         =    50125
-  CLICK         =    40011
+  --Special Files--
   RPP_PROJECT   =    41816
+  EMPTY         =    40850
+  CLICK         =    40011
+  LTC           =    40011
 
---if no sel item or no-action(0)--
+--if no sel item or no-action(=0)--
   NoSelItem     =    40113
 --------------------------
 ---------------------------------------------------------------------
@@ -37,21 +44,29 @@ return S_Type
 end
 
 function Set_ID(S_Type)
+ --Midi Files-- 
  if     S_Type == "MIDI"          then ID = MIDI
- elseif S_Type == "EMPTY"         then ID = EMPTY
+ --Audio Files-- 
  elseif S_Type == "WAVE"          then ID = WAVE
  elseif S_Type == "REX"           then ID = REX
  elseif S_Type == "FLAC"          then ID = FLAC
  elseif S_Type == "MP3"           then ID = MP3
+ elseif S_Type == "VORBIS"        then ID = VORBIS
+ elseif S_Type == "OPUS"          then ID = OPUS
+ --Video Files-- 
  elseif S_Type == "VIDEO"         then ID = VIDEO
- elseif S_Type == "CLICK"         then ID = CLICK
+ --Special Files--
  elseif S_Type == "RPP_PROJECT"   then ID = RPP_PROJECT
+ elseif S_Type == "EMPTY"         then ID = EMPTY
+ elseif S_Type == "CLICK"         then ID = CLICK
+ elseif S_Type == "LTC"           then ID = LTC
  end
- --if non-native action--
+
+ --if non-native Action ID--
  if ID and type(ID)=="string" then 
     ID = reaper.NamedCommandLookup(ID)
  end
- --if action no assigned--
+ --if Action no assigned--
  if S_Type==nil or ID==nil or ID==0 then 
     ID = NoSelItem --Action for others
  end 
