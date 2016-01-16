@@ -1,2 +1,2 @@
 # Reaper-Scripts
-Reascripts,EEL,Lua
+Reascripts(EEL,Lua)
