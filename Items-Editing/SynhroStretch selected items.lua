@@ -1,4 +1,4 @@
----SynhroStretch selected items(test1)-----
+---SynhroStretch selected items(shortcut+mouse cursor position)-----
 sel_items = reaper.CountSelectedMediaItems(0)
 if sel_items>0 then 
     --save sel items ids-- 
