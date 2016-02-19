@@ -1,30 +1,36 @@
 --Mousewhell only!--
 --get mousewhell value--
-reaper.PreventUIRefresh(111)
 function main()
-    is_new_val,f_name,secID,cmdID,mode,reso,val = reaper.get_action_context()
-    if     val>0  then K=1.2
-    elseif val<0  then K=0.8
-    end
-    --for each track--
-    if val~=0 then
-        for i=1,reaper.CountTracks(0) do
+  ----------    
+      is_new_val,f_name,secID,cmdID,mode,reso,val = reaper.get_action_context()
+      if     val>0  then K=1.15
+      elseif val<0  then K=0.85
+      end
+      --for each track--
+      for i=1,reaper.CountTracks(0) do
           tr = reaper.GetTrack(0,i-1)
           tr_h = reaper.GetMediaTrackInfo_Value(tr, 'I_WNDH')
-          ret, chunk = reaper.GetTrackStateChunk(tr, '', false)
-          Env_Count = reaper.CountTrackEnvelopes(tr)
-          new_h = (tr_h/(Env_Count+1))
-          new_h = math.floor(new_h*K+0.5)
-          
-          chunk = chunk:gsub("TRACKHEIGHT %d+","TRACKHEIGHT "..new_h)
-          chunk = chunk:gsub("LANEHEIGHT %d+","LANEHEIGHT "..new_h)
-          reaper.SetTrackStateChunk(tr, chunk, false)
-        end
-    
-    end
+              Env_Count = reaper.CountTrackEnvelopes(tr)
+              fix_h = 0
+              for i=1,Env_Count do
+                  Env = reaper.GetTrackEnvelope(tr ,i-1)
+                  BR_Env = reaper.BR_EnvAlloc(Env,0)
+                  active,visible,armed, inLane,laneHeight, defShape, minVal,maxVal, centerVal, type, faderScaling = reaper.BR_EnvGetProperties(BR_Env)
+                  if visible and inLane then
+                      if laneHeight>0 then tr_h=tr_h-laneHeight
+                      elseif laneHeight==0 then fix_h=fix_h+1
+                      end
+                  end
+                  reaper.BR_EnvFree(BR_Env, true) 
+              end
+          tr_h = tr_h/(fix_h+1)
+          new_h = math.floor(tr_h*K+0.5)
+          reaper.SetMediaTrackInfo_Value(tr, "I_HEIGHTOVERRIDE", new_h)
+      end
+      
+  ----------    
 end 
 reaper.TrackList_AdjustWindows(0)
 reaper.UpdateArrange()
-reaper.PreventUIRefresh(-111)
    
 reaper.defer(main)
