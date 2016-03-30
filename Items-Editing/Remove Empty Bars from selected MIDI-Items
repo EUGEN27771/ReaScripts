@@ -12,16 +12,15 @@ function Remove_Empty_Bars(Item,Take)
     local Meas_end     = reaper.MIDI_GetPPQPos_EndOfMeasure(Take, 0+1)
     local ret, notecnt, ccevtcnt, textsyxevtcnt = reaper.MIDI_CountEvts(Take)
     ----------------------------
-      local s = 1
-      while Meas_start<Item_End_ppq do
+      local s = 1; local w = 0
+      while Meas_start<Item_End_ppq and w<10000 do
             -- Find notes in current range --
             local Split = true
             for i=1,notecnt do 
                 local ret, sel, muted, startppqpos, endppqpos, chan, pitch, vel = reaper.MIDI_GetNote(Take, i-1)     
                 if (startppqpos > Meas_start and startppqpos < Meas_end) or
                    (endppqpos   > Meas_start and endppqpos   < Meas_end) or
-                   (startppqpos < Meas_start and endppqpos   > Meas_end)    then Split = false
-                                                                                 break     
+                   (startppqpos < Meas_start and endppqpos   > Meas_end)    then Split = false; break     
                 end
             end
             -- Save current Range< if notes not found --
@@ -32,6 +31,7 @@ function Remove_Empty_Bars(Item,Take)
          -- To next --
          Meas_start = Meas_end
          Meas_end   = reaper.MIDI_GetPPQPos_EndOfMeasure( Take , Meas_start+1)
+         w = w+1
       end
     ----------------------------
     for s=1,#Split_Points, 2 do 
