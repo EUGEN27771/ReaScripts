@@ -1,0 +1,344 @@
+--------------------------------------------------------------------------------
+---   Simple Element Class   ---------------------------------------------------
+--------------------------------------------------------------------------------
+local Element = {}
+function Element:new(x,y,w,h, r,g,b,a, lbl,fnt,fnt_sz, norm_val)
+    local elm = {}
+    elm.def_xywh = {x,y,w,h,fnt_sz} -- its default coord,used for Zoom etc
+    elm.x, elm.y, elm.w, elm.h = x, y, w, h
+    elm.r, elm.g, elm.b, elm.a = r, g, b, a
+    elm.lbl, elm.fnt, elm.fnt_sz  = lbl, fnt, fnt_sz
+    elm.norm_val = norm_val
+    ------
+    setmetatable(elm, self)
+    self.__index = self 
+    return elm
+end
+--------------------------------------------------------------
+--- Function for Child Classes(args = Child,Parent Class) ----
+--------------------------------------------------------------
+function extended(Child, Parent)
+  setmetatable(Child,{__index = Parent}) 
+end
+--------------------------------------------------------------
+---   Element Class Methods(Main Methods)   ------------------
+--------------------------------------------------------------
+function Element:update_xywh()
+  if not Z_w or not Z_h then return end -- return if zoom not defined
+  if Z_w>0.5 and Z_w<3 then  
+   self.x, self.w = math.ceil(self.def_xywh[1]* Z_w) , math.ceil(self.def_xywh[3]* Z_w) --upd x,w
+  end
+  if Z_h>0.5 and Z_h<3 then
+   self.y, self.h = math.ceil(self.def_xywh[2]* Z_h) , math.ceil(self.def_xywh[4]* Z_h) --upd y,h
+  end
+  if Z_w>0.5 or Z_h>0.5  then --fix it!--
+     self.fnt_sz = math.max(9,self.def_xywh[5]* (Z_w+Z_h)/2)
+     self.fnt_sz = math.min(22,self.fnt_sz)
+  end       
+end
+--------
+function Element:pointIN(p_x, p_y)
+  return p_x >= self.x and p_x <= self.x + self.w and p_y >= self.y and p_y <= self.y + self.h
+end
+--------
+function Element:mouseIN()
+  return gfx.mouse_cap&1==0 and self:pointIN(gfx.mouse_x,gfx.mouse_y)
+end
+--------
+function Element:mouseDown()
+  return gfx.mouse_cap&1==1 and self:pointIN(mouse_ox,mouse_oy)
+end
+--------
+function Element:mouseClick()
+  return gfx.mouse_cap&1==0 and last_mouse_cap&1==1 and
+  self:pointIN(gfx.mouse_x,gfx.mouse_y) and self:pointIN(mouse_ox,mouse_oy)         
+end
+--------
+function Element:draw_frame()
+  local x,y,w,h  = self.x,self.y,self.w,self.h
+  gfx.rect(x, y, w, h, 0)--frame1
+  gfx.roundrect(x, y, w-1, h-1, 3, true)--frame2         
+end
+--------------------------------------------------------------------------------
+---   Create Element Child Classes(Button,Slider,Knob)   -----------------------
+--------------------------------------------------------------------------------
+local Button ={}; local Knob ={}; local Slider ={}; 
+  extended(Button, Element)
+  extended(Knob,   Element)
+  extended(Slider, Element)
+---Create Slider Child Classes(V_Slider,H_Slider)----
+local H_Slider ={}; local V_Slider ={};
+  extended(H_Slider, Slider)
+  extended(V_Slider, Slider)
+
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+---   Button Class Methods   ---------------------------------------------------
+--------------------------------------------------------------------------------
+function Button:draw_lbl()
+    local x,y,w,h  = self.x,self.y,self.w,self.h
+    local fnt,fnt_sz = self.fnt, self.fnt_sz
+    --Draw btn lbl(text)--
+      gfx.set(0.7, 1, 0, 1)--set label color
+      gfx.setfont(1, fnt, fnt_sz);--set label fnt
+        local lbl_w, lbl_h = gfx.measurestr(self.lbl)
+        gfx.x = x+(w-lbl_w)/2; gfx.y = y+(h-lbl_h)/2
+        gfx.drawstr(self.lbl)
+end
+---------------------
+function Button:draw()
+    self:update_xywh()--Update xywh(if wind changed)
+    local x,y,w,h  = self.x,self.y,self.w,self.h
+    local r,g,b,a  = self.r,self.g,self.b,self.a
+    ---Get L_mouse state--
+          --in element--
+          if self:mouseIN() then a=a+0.1 end
+          --in elm L_down--
+          if self:mouseDown() then a=a+0.2 end
+          --in elm L_up(released and was previously pressed)--
+          if self:mouseClick() then --[[self.onClick()]] end
+    --Draw btn(body,frame)--
+    gfx.set(r,g,b,a)--set btn color
+    gfx.rect(x,y,w,h,true)--body
+    self:draw_frame()
+    ------------------------
+    self:draw_lbl()
+end
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+---   Knob Class Methods   -----------------------------------------------------   
+--------------------------------------------------------------------------------
+function Knob:update_xywh() --redefine method for Knob
+    if not Z_w or not Z_h then return end -- return if zoom not defined
+    local w_h = math.ceil( math.min(self.def_xywh[3]*Z_w, self.def_xywh[4]*Z_h) )
+    if Z_w>0.5 and Z_w<3 then self.x = math.ceil(self.def_xywh[1]* Z_w) end
+    if Z_h>0.5 and Z_h<3 then self.y = math.ceil(self.def_xywh[2]* Z_h) end
+    if Z_w>0.5 and Z_h>0.5 and (Z_w<3 or Z_h<3) then self.w, self.h = w_h, w_h end
+    if Z_w>0.5 or Z_h>0.5 then --fix it!--
+      self.fnt_sz = math.max(7, self.def_xywh[5]* (Z_w+Z_h)/2)--fix it!
+      self.fnt_sz = math.min(20,self.fnt_sz) 
+    end 
+end
+--------
+function Knob:set_norm_val()
+    local x,y,w,h  = self.x,self.y,self.w,self.h
+    local VAL,K = 0,10 -- temp value; coefficient(when Ctrl pressed)
+    if Ctrl then VAL = self.norm_val + ((last_y-gfx.mouse_y)/(h*K))
+       else VAL = (h-(gfx.mouse_y-y))/h end
+    if VAL<0 then VAL=0 elseif VAL>1 then VAL=1 end
+    self.norm_val=VAL
+end
+--------
+function Knob:draw_body()
+    local x,y,w,h  = self.x,self.y,self.w,self.h
+    local k_x, k_y, r = x+w/2, y+h/2, (w+h)/4
+    local pi=math.pi
+    local offs = pi+pi/4
+    local val = 1.5*pi * self.norm_val
+    local ang1, ang2 = offs-0.01, offs + val
+    gfx.circle(k_x,k_y,r-1, false) --external
+       for i=1,10 do
+        gfx.arc(k_x, k_y, r-2,  ang1, ang2, true)
+        r=r-1; --gfx.a=gfx.a+0.005 --variant
+       end
+    gfx.circle(k_x, k_y, r-1, true)--internal
+end
+--------
+function Knob:draw_lbl()
+    local x,y,w,h  = self.x,self.y,self.w,self.h
+    local lbl_w, lbl_h = gfx.measurestr(self.lbl)
+    gfx.x = x+(w-lbl_w)/2; gfx.y = (y+h/2)/2 -lbl_h
+    gfx.drawstr(self.lbl)--draw knob label
+end
+--------
+function Knob:draw_val()
+    local x,y,w,h  = self.x,self.y,self.w,self.h
+    local val = string.format("%.1f", self.norm_val)
+    local val_w, val_h = gfx.measurestr(val)
+    gfx.x = x+(w-val_w)/2; gfx.y = (y+h/2)-val_h-3
+    gfx.drawstr(val)--draw knob Value
+end
+
+-------------------
+function Knob:draw()
+    self:update_xywh()--Update xywh(if wind changed)
+    local x,y,w,h  = self.x,self.y,self.w,self.h
+    local r,g,b,a  = self.r,self.g,self.b,self.a
+    local fnt,fnt_sz = self.fnt, self.fnt_sz
+    ---Get L_mouse state--
+          --in element--
+          if self:mouseIN() then a=a+0.1 end
+          --in elm L_down--
+          if self:mouseDown() then a=a+0.2 
+             self:set_norm_val()
+             --self:onMove() 
+          end
+          --in elm L_up(released and was previously pressed)--
+          --if self:mouseClick() then --[[self.onClick()]] end
+    --Draw (body,frame)--
+    gfx.set(r,g,b,a)--set color
+    self:draw_body()--body
+    --self:draw_frame()--frame
+    ------------------------
+    --Draw label,value--
+    gfx.set(0.7, 1, 0, 1)--set labels color
+    gfx.setfont(1, fnt, fnt_sz);--set labels fnt
+    --self:draw_lbl()
+    self:draw_val()
+end
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+---   Slider Class Methods   ---------------------------------------------------
+--------------------------------------------------------------------------------
+function H_Slider:set_norm_val()
+    local x,y,w,h  = self.x,self.y,self.w,self.h
+    local VAL,K = 0,10 --val=temp value;k=koof(when Ctrl pressed)
+    if Ctrl then VAL = self.norm_val + ((gfx.mouse_x-last_x)/(w*K))
+       else VAL = (gfx.mouse_x-x)/w end
+    if VAL<0 then VAL=0 elseif VAL>1 then VAL=1 end
+    self.norm_val=VAL
+end
+function V_Slider:set_norm_val()
+    local x,y,w,h  = self.x,self.y,self.w,self.h
+    local VAL,K = 0,10 --val=temp value;k=koof(when Ctrl pressed)
+    if Ctrl then VAL = self.norm_val + ((last_y-gfx.mouse_y)/(h*K))
+       else VAL = (h-(gfx.mouse_y-y))/h end
+    if VAL<0 then VAL=0 elseif VAL>1 then VAL=1 end
+    self.norm_val=VAL
+end
+--------
+function H_Slider:draw_body()
+    local x,y,w,h  = self.x,self.y,self.w,self.h
+    local val = w * self.norm_val
+    gfx.rect(x,y, val, h, true)--Hor Slider body
+end
+function V_Slider:draw_body()
+    local x,y,w,h  = self.x,self.y,self.w,self.h
+    local val = h * self.norm_val
+    gfx.rect(x,y+h-val, w, val, true) --Vert Slider body
+end
+--------
+function H_Slider:draw_lbl()
+    local x,y,w,h  = self.x,self.y,self.w,self.h
+    local lbl_w, lbl_h = gfx.measurestr(self.lbl)
+    gfx.x = x+5; gfx.y = y+(h-lbl_h)/2;
+    gfx.drawstr(self.lbl)--draw Slider label
+end
+function V_Slider:draw_lbl()
+    local x,y,w,h  = self.x,self.y,self.w,self.h
+    local lbl_w, lbl_h = gfx.measurestr(self.lbl)
+    gfx.x = x+(w-lbl_w)/2; gfx.y = y+h-lbl_h-5
+    gfx.drawstr(self.lbl)--draw Slider label
+end
+--------
+function H_Slider:draw_val()
+    local x,y,w,h  = self.x,self.y,self.w,self.h
+    local val = string.format("%.1f", self.norm_val)
+    local val_w, val_h = gfx.measurestr(val)
+    gfx.x = x+w-val_w-5
+    gfx.drawstr(val)--draw Slider Value
+end
+function V_Slider:draw_val()
+    local x,y,w,h  = self.x,self.y,self.w,self.h
+    local val = string.format("%.1f", self.norm_val)
+    local val_w, val_h = gfx.measurestr(val)
+    gfx.x = x+(w-val_w)/2; gfx.y = y+5
+    gfx.drawstr(val)--draw Slider Value
+end
+
+---------------------
+function Slider:draw()
+    self:update_xywh()--Update xywh(if wind changed)
+    local x,y,w,h  = self.x,self.y,self.w,self.h
+    local r,g,b,a  = self.r,self.g,self.b,self.a
+    local fnt,fnt_sz = self.fnt, self.fnt_sz
+    ---Get L_mouse state--
+          --in element-----
+          if self:mouseIN() then a=a+0.1 end
+          --in elm L_down--
+          if self:mouseDown() then a=a+0.2 
+             self:set_norm_val()
+             --self:onMove() 
+          end
+          --in elm L_up(released and was previously pressed)--
+          --if self:mouseClick() then --[[self.onClick()]] end
+    --Draw (body,frame)--
+    gfx.set(r,g,b,a)--set color
+    self:draw_body()--body
+    self:draw_frame()--frame
+    ------------------------
+    --Draw label,value--
+    gfx.set(0.7, 1, 0, 1)--set labels color
+    gfx.setfont(1, fnt, fnt_sz);--set labels fnt
+    self:draw_lbl()
+    self:draw_val()
+end
+
+----------------------------------------------------------------------------------------------------
+---   START   --------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------
+---   Objects(for Example Only)   ------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------
+local btn1 = Button:new(20,20,50,50, 0.5,0.3,0.4,0.5, "Btn1","Arial",15, 0 )
+local btn2 = Button:new(80,20,50,50, 0.6,0.4,0.1,0.5, "Btn2","Arial",15, 0 )
+local Button_TB = {btn1,btn2}
+local knb1 = Knob:new(20,80,50,50,   0.7,0.3,0.3,0.4, "K1","Arial",14, 0.5 )
+local knb2 = Knob:new(80,80,50,50,   0.3,0.7,0.3,0.4, "K2","Arial",14, 0.5 )
+local knb3 = Knob:new(20,140,50,50,  0.7,0.7,0.3,0.4, "K3","Arial",14, 0.5 )
+local knb4 = Knob:new(80,140,50,50,  0.3,0.7,0.7,0.4, "K4","Arial",14, 0.5 )
+local Knob_TB = {knb1,knb2,knb3,knb4}
+local sldr1 = H_Slider:new(20,220,180,20, 0.7,0.3,0.3,0.5, "Sldr1","Arial",15, 0.5 )
+local sldr2 = V_Slider:new(170,20,30,180, 0.3,0.5,0.7,0.5, "Sldr2","Arial",15, 0.5 )
+local Slider_TB = {sldr1,sldr2}
+----------------------------------------------------------------------------------------------------
+---   Main DRAW function   -------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------
+function DRAW()
+    for key,btn  in pairs(Button_TB) do btn:draw()  end 
+    for key,knb  in pairs(Knob_TB)   do knb:draw()  end 
+    for key,sldr in pairs(Slider_TB) do sldr:draw() end 
+end
+
+--------------------------------------------------------------------------------
+--   INIT   --------------------------------------------------------------------
+--------------------------------------------------------------------------------
+function Init()
+    --Some gfx Wnd Default Values--------------
+    local R,G,B = 20,20,20        --0..255 form
+    Wnd_bgd = R + G*256 + B*65536 --red+green*256+blue*65536  
+    Wnd_Title,Wnd_W,Wnd_H,Wnd_Dock,Wnd_X,Wnd_Y = "TEST", 220,260, 0,100,320
+    --Init window------------------------------
+    gfx.clear = Wnd_bgd         
+    gfx.init( Wnd_Title, Wnd_W,Wnd_H, Wnd_Dock, Wnd_X,Wnd_Y )
+    --Mouse--------------
+    last_mouse_cap = 0
+    last_x, last_y = 0, 0
+end
+----------------------------------------
+--   Mainloop   ------------------------
+----------------------------------------
+function mainloop()
+    Z_w,Z_h = gfx.w/Wnd_W, gfx.h/Wnd_H
+    if gfx.mouse_cap&1==1 and last_mouse_cap&1==0 then 
+       mouse_ox, mouse_oy = gfx.mouse_x, gfx.mouse_y 
+    end
+    Ctrl  = gfx.mouse_cap&4==4
+    Shift = gfx.mouse_cap&8==8
+    -----------------------
+    --DRAW,MAIN functions--
+      DRAW()--Main() 
+    -----------------------
+    -----------------------
+    last_mouse_cap = gfx.mouse_cap
+    last_x, last_y = gfx.mouse_x, gfx.mouse_y
+    char = gfx.getchar() 
+    if char~=-1 then reaper.defer(mainloop) end --defer
+    -----------  
+    gfx.update()
+    -----------
+end
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+------
+Init()
+mainloop()
