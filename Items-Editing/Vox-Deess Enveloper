@@ -249,7 +249,9 @@ local Frame_TB = {Fltr_Frame, Gate_Frame}
 ----------------------------------------------------------------------------------------------------
 ---  Create Objects(controls) and override some methods   ------------------------------------------
 ----------------------------------------------------------------------------------------------------
----------------------------------------------------
+------------------------------------------------------------------------------------
+--- Sliders ------------------------------------------------------------------------
+------------------------------------------------------------------------------------
 local HP_Freq = H_Slider:new(20,420,180,20, 0.3,0.5,0.7,0.3, "HP Freq","Arial",15, 0.4 )
   function HP_Freq:draw_val()
     local x,y,w,h  = self.x,self.y,self.w,self.h
@@ -338,20 +340,40 @@ local Gate_Post = H_Slider:new(370,450,100,20, 0.3,0.5,0.2,0.3, "Post","Arial",1
   Gate_Post.onUp    = Gate_Sldrs_onUp
 --------------------------------------------------
 --------------------------------------------------
-local Env_Gain = V_Slider:new(490,380,50,90, 0.4,0.2,0.2,0.3, "Env","Arial",14, 0.8 )
+local Env_Gain = V_Slider:new(490,380,50,90, 0.4,0.2,0.2,0.3, "Env","Arial",14, 0.86 ) 
+  function Env_Gain:draw_val()
+    local x,y,w,h  = self.x,self.y,self.w,self.h
+    --- Scaled val  -- !!! ----------
+    local minp, maxp = 0,1
+    local minv, maxv = math.log(0.05), math.log(1)
+    local scale = (maxv-minv) / (maxp-minp)
+    self.scal_val = math.exp(minv + scale*(self.norm_val-minp))
+    ---------------------------------
+    local val = 20*math.log(self.scal_val ,10) --
+    ---------------------------------------------
+    local val = string.format("%.1f", val).." dB"
+    local val_w, val_h = gfx.measurestr(val)
+    gfx.x = x+(w-val_w)/2; gfx.y = y+5
+    gfx.drawstr(val)--draw Slider Value
+  end
+  ----------
+  ----------
   Env_Gain.onMove = 
   function() 
-      if Wave.State then Wave:Create_Envelope() end 
+     if Wave.State then Wave:Create_Envelope() end 
   end
   Env_Gain.onUp = 
   function() 
-      if Wave.State then reaper.Undo_OnStateChangeEx("~Change Envelope~", 1, -1) end 
+     if Wave.State then reaper.Undo_OnStateChangeEx("~Change Envelope~", 1, -1) end 
   end
---------------------------------------------------
---------------------------------------------------
+
+-----------------------------------
+--- Slider_TB ---------------------
+-----------------------------------
 local Slider_TB = {HP_Freq,Fltr_Gain, Gate_Thresh,Gate_RMS,Gate_Pre,Gate_Post, Env_Gain}
 
 ------------------------------------------------------------------------------------
+--- Buttons ------------------------------------------------------------------------
 ------------------------------------------------------------------------------------
 local Detect = Button:new(20,380,180,25, 0.4,0.12,0.12,0.3, "Get Selection",    "Arial",15 )
   Detect.onClick = 
@@ -362,14 +384,10 @@ local Detect = Button:new(20,380,180,25, 0.4,0.12,0.12,0.3, "Get Selection",    
          reaper.Undo_EndBlock("~Create_Envelope~", -1) 
       end 
   end
-----------------
---local ApplyGate = Button:new(520,515,120,25, 0.6,0.4,0.1,0.5, "Apply Gate",    "Arial",15 )
-  --ApplyGate.onClick = function() if Wave.State then Gate_Gl:Set_Values(); Gate_Gl:Apply_toFiltered() end end  
-----------------
---local Create_Env = Button:new(580,545,120,25, 0.4,0.4,0.4,0.5, "Create Envelope", "Arial",15 )
-  --Create_Env.onClick = function() Wave:Create_Envelope() end
---------------------
-local Button_TB = {Detect,ApplyGate,Create_Env}
+-----------------------------------
+--- Button_TB ---------------------
+-----------------------------------
+local Button_TB = {Detect}
 
 ----------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------
@@ -576,29 +594,30 @@ function Wave:Create_Envelope()
   self:Activate_Envelope()
   --- Del old points in sel range --
   reaper.DeleteEnvelopePointRange( self.Env, self.sel_start, self.sel_start + self.sel_len )
-  local Gain = Env_Gain.norm_val
+  local Gain =  Env_Gain.scal_val -- Env_Gain.scal_val
   if Gain == 1 then reaper.UpdateArrange() return end -- return if Env Gain = 1 ! 
-  ---------------------------
-  --reaper.Undo_BeginBlock()
-  ---------------------------
-    reaper.InsertEnvelopePoint(self.Env, self.sel_start, 1, 0, 0, 0, true) -- point in sel start
+    ----------------------------------------------------
+    local mode = reaper.GetEnvelopeScalingMode(self.Env)
+          Gain = reaper.ScaleToEnvelopeMode(mode,  Gain)
+          G_1 = reaper.ScaleToEnvelopeMode(mode, 1)     -- 1 - gain
+    ----------------------------------------------------
+    reaper.InsertEnvelopePoint(self.Env, self.sel_start + 1/srate, G_1, 0, 0, 0, true) -- sel_start + 1smpl
       -------
       local shape, tens , sel = 2,0,0
       for i=1, #Gate_Gl.State_Points, 2 do
           if Gate_Gl.State_Points[i] then local pre = Gate_Gl.pre_ms/1000 
-              reaper.InsertEnvelopePoint(self.Env, Gate_Gl.State_Points[i+1],         1, shape, tens, sel, true)
+              reaper.InsertEnvelopePoint(self.Env, Gate_Gl.State_Points[i+1],       G_1, shape, tens, sel, true)
               reaper.InsertEnvelopePoint(self.Env, Gate_Gl.State_Points[i+1]+pre,  Gain, shape, tens, sel, true)
           end
           if not Gate_Gl.State_Points[i] then local post = Gate_Gl.post_ms/1000 
               reaper.InsertEnvelopePoint(self.Env, Gate_Gl.State_Points[i+1]-post, Gain, shape, tens, sel, true)
-              reaper.InsertEnvelopePoint(self.Env, Gate_Gl.State_Points[i+1],         1, shape, tens, sel, true)
+              reaper.InsertEnvelopePoint(self.Env, Gate_Gl.State_Points[i+1],       G_1, shape, tens, sel, true)
           end
       end 
       -------
-    reaper.InsertEnvelopePoint(self.Env, self.sel_start + self.sel_len, 1, 0, 0, 0, true) -- point in sel end
+    reaper.InsertEnvelopePoint(self.Env, self.sel_start + self.sel_len - 1/srate, G_1, 0, 0, 0, true) -- sel_end - 1smpl
     reaper.Envelope_SortPoints(self.Env)
     reaper.UpdateArrange()
- --reaper.Undo_EndBlock("Create_Envelope", -1)
 end
 
 --------------------------------------------------------------------------------
