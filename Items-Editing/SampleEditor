@@ -1,0 +1,315 @@
+-- Warning - its beta-00000000000000001
+function Get_Source_Data()
+    local Item = reaper.GetSelectedMediaItem(0, 0)
+    if Item then Take = reaper.GetActiveTake(Item)
+        if reaper.TakeIsMIDI(Take) then 
+           return "MIDI - Item!" 
+        end 
+      else return "No Sel Items!"
+    end
+    ---------------------- 
+    local PCM_source = reaper.GetMediaItemTake_Source(Take)
+    local source_type = reaper.GetMediaSourceType(PCM_source,'')
+    if source_type~="WAVE" then return "No Wave" end
+    ------------
+    local ret, offs, len, rev = reaper.PCM_Source_GetSectionInfo(PCM_source)
+    -- Get from wav chunk ?! -- 
+    nchans = reaper.GetMediaSourceNumChannels(PCM_source)
+    local srate = reaper.GetMediaSourceSampleRate(PCM_source)
+    --local src_bits = 16 --Change it,Need real,get from wav chunk !!!
+    ---------------------------------------------------
+    local Item_start = reaper.GetMediaItemInfo_Value(Item,'D_POSITION')
+    local Item_len = reaper.GetMediaItemInfo_Value(Item,'D_LENGTH')
+    local Item_end = Item_start + Item_len
+    local sel_start, sel_end = reaper.GetSet_LoopTimeRange(false,false,0,0,false)
+    local sel_start_in_item_t = math.max(sel_start - Item_start,0)  --  in item(time)
+    local sel_end_in_item_t   = sel_end   - Item_start   --  in item(time)
+    if sel_end_in_item_t - sel_start_in_item_t > 0.1 then sel_end_in_item_t = sel_start_in_item_t+0.1 end -- Limit
+    local sel_start_in_item_s = math.floor(sel_start_in_item_t*srate + 0.5) --  in item(smpls,0-based !)
+    if sel_end_in_item_t<0 then return "Sel End Invalid" end
+    local sel_end_in_item_s   = math.floor(sel_end_in_item_t*srate + 0.5)   --  in item(smpls,0-based !)
+    ------------------------------------------------------------------
+    -- Read datas from orig file -------------------------------------
+    ------------------------------------------------------------------
+    FilePath  = reaper.GetMediaSourceFileName(PCM_source , '') -- Path
+    --------
+    local file =  io.open(FilePath,"rb") -- open file, rb mode
+    local Data = file:read("*a")         -- read(all)
+    file:close()                   -- close file
+    -------------------------------------------------------
+    -------------------------------------------------------
+    local audioFormat   = string.unpack("<I2", Data:sub(21,22))
+          nchans        = string.unpack("<I2", Data:sub(23,24))
+          srate         = string.unpack("<I4", Data:sub(25,28))
+    local blockalign    = string.unpack("<I2", Data:sub(33,34))
+          bitspersample = string.unpack("<I2", Data:sub(35,36))
+    -------------------------------------------------------
+    -------------------------------------------------------
+    local i,j = Data:find("data")   -- find "data" in file 
+          j = j+5                   -- its samples bytes(wav-data) start
+    local  Start_Smpl = j +  sel_start_in_item_s * blockalign --(bitspersample/8) *nchans  -- calc start sample
+    local  End_Smpl   = j +   sel_end_in_item_s  * blockalign  -- calc end sample
+    local  End1_Smpl  = j + (sel_end_in_item_s+1)* blockalign  -- calc end+1-!!! sample
+    -------------------------------------------------------
+    Data1 = Data:sub(1,Start_Smpl-1)  --from file start to start smpl
+    ---SMPLS = Data:sub(Start_Smpl,End_Smpl)
+    Data2 = Data:sub(End1_Smpl) --from  smpl to file end
+    -------------------------------------------------------
+    -------------------------------------------------------
+    AA = reaper.CreateTakeAudioAccessor( Take )
+    smpls = (End1_Smpl-Start_Smpl)/blockalign 
+    buf = reaper.new_array(smpls*nchans)
+    buf.clear()
+    ret = reaper.GetAudioAccessorSamples(AA, srate,  nchans , sel_start_in_item_t, smpls, buf )
+    reaper.DestroyAudioAccessor(AA)
+end
+
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+--   MAIN   --------------------------------------------------------------------
+--------------------------------------------------------------------------------
+function Draw_Samples()
+    local rds = 3
+    local Sx = (gfx.w-10)/smpls
+    local Sy = (gfx.h-10)/2
+    local Yax = gfx.h/2
+    gfx.set(0.7,0.7,0.6)
+    gfx.line(0,Yax,gfx.w,Yax,true) 
+     -- Draw Samples --
+     gfx.set(0.7,0.5,0.6)
+     local x,y,x2,y2
+     for i=1, #buf,1 do
+         x = i*Sx;
+         -- Get mouse --
+         if gfx.mouse_cap&1==1 and math.abs(gfx.mouse_x - x)<= math.max(Sx/2,5) then 
+            buf[i] = (Yax- gfx.mouse_y)/Sy 
+         end 
+           -- Draw Point------------
+           y = Yax - buf[i]*Sy 
+           if smpls<256 then gfx.circle(x,y,rds,true,true) end
+           -- Draw Line ------------
+           if i<#buf then
+            x2, y2 = (i+1)*Sx , Yax - buf[i+1]*Sy  
+            gfx.line(x,y,x2,y2,true)
+           end
+     end
+end
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+function Draw_Samples_Stereo()
+--XXX = {};for i=1,#buf,1 do XXX[i] = buf[i] end 
+    -------------
+    local rds = 3
+    local Sx = (gfx.w-10)/smpls /2
+    local Sy = (gfx.h-10)/2 /2
+    local Yax  = (gfx.h/2)
+    local Yax1 = (gfx.h/4)
+    local Yax2 = (gfx.h/4)*3
+    
+    gfx.set(0.3,0.7,0.6,0.5)
+    gfx.line(0,Yax,gfx.w,Yax,true)
+    gfx.set(0.7,0.7,0.6,0.5)
+    gfx.line(0,Yax1,gfx.w,Yax1,true)
+    gfx.line(0,Yax2,gfx.w,Yax2,true) 
+     -- Draw Samples 1 --
+     gfx.set(0.7,0.5,0.6,1)
+     local x,y,x2,y2
+     for i=1, #buf,2 do
+          x = i*Sx;
+          -- Get mouse 1 --------------------------------------
+          if gfx.mouse_cap&1==1 and math.abs(gfx.mouse_x - x)<= math.max(Sx,5) and 
+             gfx.mouse_y<=Yax and gfx.mouse_y>=0  then 
+             buf[i] = (Yax1- gfx.mouse_y)/Sy 
+          end 
+            -- Draw Point------------
+            y = Yax1 - buf[i]*Sy 
+            if smpls<256 then gfx.circle(x,y,rds,true,true) end
+            -- Draw Line ------------
+            if i<#buf-1 then
+             x2, y2 = (i+2)*Sx , Yax1 - buf[i+2]*Sy  
+             gfx.line(x,y,x2,y2,true)
+            end
+     end
+     -----------------------------------------------------------
+     -----------------------------------------------------------
+     -- Draw Samples 1 --
+     gfx.set(0.5,0.7,0.6,1)
+     for i=2, #buf,2 do
+          x = (i-1)*Sx;
+          -- Get mouse 2 ---------------------------------------
+          if gfx.mouse_cap&1==1 and math.abs(gfx.mouse_x - x)<= math.max(Sx,5) and 
+             gfx.mouse_y>=Yax and gfx.mouse_y<=gfx.h  then 
+             buf[i] = (Yax2- gfx.mouse_y)/Sy 
+          end 
+            -- Draw Point------------
+            y = Yax2 - buf[i]*Sy 
+            if smpls<256 then gfx.circle(x,y,rds,true,true) end
+            -- Draw Line ------------
+            if i<#buf-1 then
+               x2, y2 = (i+2-1)*Sx , Yax2 - buf[i+2]*Sy  
+               gfx.line(x,y,x2,y2,true)
+            end  
+     end
+end
+
+----------------------------------------------------------------------------------
+--- Rewrite_Wave_File ------------------------------------------------------------
+----------------------------------------------------------------------------------
+function Rewrite_Wave_File(buf,FilePath)
+    ------------------------------------------------
+    --- Open File ----------------------------------
+    ------------------------------------------------
+    if buf and FilePath then reaper.Main_OnCommand(40440, 0) -- offline(40100-may be all?)
+       file = io.open(FilePath,"wb")                         -- file in "wb"
+       if not file then reaper.Main_OnCommand(40439, 0)
+          return reaper.MB("Not aviable!", "Info", 0)
+       end
+    end
+    ------------------------------------------------
+    --- Buffer_to_chars ----------------------------
+    ------------------------------------------------
+    -- for 16 bit norm to int ----------------------
+     function norm_to_int16(inp)
+      local out
+          if inp<0 then 
+               if inp<=-1 then out = -32768 
+               else out = math.modf((inp * 32768)-0.5)
+               end
+            elseif inp>=(32766.5/32768.0) then out = 32767 
+            else out = math.modf((inp * 32768)+ 0.5)
+          end
+       return out
+     end
+     -- for 24 bit norm to int ---------------------
+      function norm_to_int24(inp)
+       local out
+           if inp<0 then 
+                if inp<=-1 then out = -8388608 
+                else out = math.modf((inp * 8388608)-0.5)
+                end
+             elseif inp>=(8388606.5/8388608) then out = 8388607 
+             else out = math.modf((inp * 8388608)+ 0.5)
+           end
+        return out
+      end
+    
+    ------------------------------------------------
+    ------------------------------------------------  
+    local Data_buf = {} 
+        -- 16 pcm -----------------
+      if bitspersample == 16 then
+        for i=1, #buf do
+            local inp = buf[i]
+            local out = norm_to_int16(inp)
+            -----------
+            Data_buf[i] = string.pack("<i2", out) --little-endian
+        end
+      end
+        -- 24 pcm -----------------
+     if bitspersample == 24 then
+        for i=1, #buf do
+            local inp = buf[i]
+            local out = norm_to_int24(inp)
+            -----------
+            Data_buf[i] = string.pack("<i3", out) --little-endian 
+        end
+     end 
+        -- 32 fp ------------------
+     if bitspersample == 32 then 
+        for i=1, #buf do
+            Data_buf[i] = string.pack("<f", buf[i]) --little-endian
+        end  
+     end
+    
+    ------------------------------------------------
+    -- Write --------------------------------------- 
+    ------------------------------------------------  
+    Data = table.concat(Data_buf) -- Concat(Its wave Data!!!)  
+    ------------------------
+    -- Write Head,Data -----
+    ------------------------
+    file:write(Data1,Data,Data2)
+    file:close()
+    ------------------------
+    ------------------------
+    reaper.Main_OnCommand(40439, 0) -- online(40101-may be all?)
+    reaper.Main_OnCommand(40441, 0) -- rebuild peaks 
+    reaper.UpdateItemInProject(reaper.GetSelectedMediaItem(0, 0))
+    reaper.UpdateArrange()
+end
+
+--------------------------------------------------------------------------------
+--   Proj_Change   -------------------------------------------------------------
+--------------------------------------------------------------------------------
+function Proj_Change()
+    local cur_cnt = reaper.GetProjectStateChangeCount(0)
+    if not Proj_Change_cnt or cur_cnt ~= Proj_Change_cnt then
+       Proj_Change_cnt = cur_cnt
+       return true  
+    end
+end
+--------------------------------------------------------------------------------
+--   INIT   --------------------------------------------------------------------
+--------------------------------------------------------------------------------
+function Init()
+    -- Some gfx Wnd Default Values ---------------
+    local R,G,B = 20,20,20              -- 0...255 format
+    local Wnd_bgd = R + G*256 + B*65536 -- red+green*256+blue*65536  
+    local Wnd_Title = "TEST"
+    local Wnd_Dock,Wnd_X,Wnd_Y = 0,100,320 
+    Wnd_W,Wnd_H = 1044,490 -- global values(used for define zoom level)
+    -- Init window ------
+    gfx.clear = Wnd_bgd         
+    gfx.init( Wnd_Title, Wnd_W,Wnd_H, Wnd_Dock, Wnd_X,Wnd_Y )
+    -- Init mouse last --
+    last_mouse_cap = 0
+    last_x, last_y = 0, 0
+    mouse_ox, mouse_oy = -1, -1
+end
+----------------------------------------
+--   Mainloop   ------------------------
+----------------------------------------
+function mainloop()
+    -- zoom level -- 
+    Z_w, Z_h = gfx.w/Wnd_W, gfx.h/Wnd_H
+    if Z_w<0.6 then Z_w = 0.6 elseif Z_w>2 then Z_w = 2 end 
+    if Z_h<0.6 then Z_h = 0.6 elseif Z_h>2 then Z_h = 2 end 
+    -- mouse and modkeys --
+    if gfx.mouse_cap&1==1   and last_mouse_cap&1==0  or   --L mouse
+       gfx.mouse_cap&2==2   and last_mouse_cap&2==0  or   --R mouse
+       gfx.mouse_cap&64==64 and last_mouse_cap&64==0 then --M mouse
+       mouse_ox, mouse_oy = gfx.mouse_x, gfx.mouse_y 
+    end
+    Ctrl  = gfx.mouse_cap&4==4   -- Ctrl  state
+    Shift = gfx.mouse_cap&8==8   -- Shift state
+    Alt   = gfx.mouse_cap&16==16 -- Shift state
+    -------------------------
+    if Proj_Change() then Get_Source_Data() end
+    -------------------------
+    -- DRAW,MAIN functions --
+    -------------------------
+     if nchans==1 then Draw_Samples() 
+       else Draw_Samples_Stereo()
+     end
+     ----
+     if gfx.mouse_cap&1==0 and last_mouse_cap&1==1 then 
+        Rewrite_Wave_File(buf,FilePath) 
+     end
+    -------------------------
+    -------------------------
+    last_mouse_cap = gfx.mouse_cap
+    last_x, last_y = gfx.mouse_x, gfx.mouse_y
+    char = gfx.getchar() 
+    if char==32 then reaper.Main_OnCommand(40044, 0) end --play
+    if char~=-1 then reaper.defer(mainloop) end          --defer       
+    -----------  
+    gfx.update()
+    -----------
+end
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+--reaper.ClearConsole()
+Init()
+mainloop()
