@@ -38,7 +38,7 @@ function Wave:Get_Source()
       -- If format not supported -----------------------------
       if not((audioFormat==1 and (bitspersample==16 or bitspersample==24)) or (audioFormat==3 and bitspersample==32)) then 
         return  "Format is not supported - "..audioFormat..", "..bitspersample 
-      elseif not(nchans==1 or nchans==2) then  return false,"Multichannels is not supported - "..nchans  
+      --elseif not(nchans==1 or nchans==2) then  return false,"Multichannels is not supported - "..nchans  
       end
       -------------------------------------------------------- 
       local i,j = Data:find("data")  -- find "data" in file
@@ -68,7 +68,7 @@ function Wave:Get_Source()
       local sel_start_in_item, sel_end_in_item
       sel_start_in_item = math.max(sel_start - Item_start, 0)      -- sel start in item(time), 0 if < item start
       sel_end_in_item   = math.min(sel_end - Item_start, Item_len) -- sel end in item(time), Item_len if > item end
-      if sel_start_in_item>=Item_len or sel_end_in_item<=0 then return false,"Selection out of item"  end
+      if sel_start_in_item>=Item_len or sel_end_in_item<=0 then return false,"Selection out of item or no exist" end
       if sel_end_in_item - sel_start_in_item > 0.1 then sel_end_in_item = sel_start_in_item + 0.1 end -- Limit Selection !
       ------------------------------------------------------------------
       -- Sel Range to item samples(and round inward sel) ---------------
@@ -77,8 +77,8 @@ function Wave:Get_Source()
       local sel_start_in_smpls, sel_end_in_smpls, sel_range_in_smpls
       sel_start_in_smpls = math.ceil(sel_start_in_item*Proj_srate)+1 --  in item smpls,attn 1-based !!!
       sel_end_in_smpls   = math.floor(sel_end_in_item*Proj_srate)+1  --  in item smpls,attn 1-based !!!
-      sel_range_in_smpls = sel_end_in_smpls - sel_start_in_smpls
-      if sel_range_in_smpls<1 then return false,"Sel < 1 smpls"  end
+      sel_range_in_smpls = sel_end_in_smpls - sel_start_in_smpls +1
+      if sel_range_in_smpls<2 then return false,"Sel < 2 smpls"  end
       ----------------------------------------------------------------------
       -- Simple scheme   ||1 -- |D1 (processed part) -- |D2 -- ||   --------
       ----------------------------------------------------------------------
@@ -86,37 +86,29 @@ function Wave:Get_Source()
       D1 = Datablock +  (sel_start_in_smpls-1) * blockalign -- Start_Byte
       D2 = D1 +  sel_range_in_smpls * blockalign 
       -------------------------------------------------------
-      local Data1,SMPLS,Data2, buf 
+      local Data1,SMPLS,Data2 
       Data1 = Data:sub(1,  D1 - 1) -- ||1 -- |
       SMPLS = Data:sub(D1, D2 - 1) -- |D1 (processed part) -- |
       Data2 = Data:sub(D2)         -- |D2 -- ||
-      ---------------------------------------------------------------------
-      -- Get samples ------------------------------------------------------
-      ---------------------------------------------------------------------
-      local buf={};
+      -----------------------------------------------------------------------------------
+      -- Get samples --------------------------------------------------------------------
+      -----------------------------------------------------------------------------------
+      --local buf={}   -- Its sample buffer!
+      local buf={}
+      local Pfmt,Bps -- Pack format, BYTES per sample ------
+        if bitspersample==16 then Pfmt = "<i2"; Bps = 2 end
+        if bitspersample==24 then Pfmt = "<i3"; Bps = 3 end
+        if bitspersample==32 then Pfmt = "<f" ; Bps = 4 end
+      ------------------------------------------------------
+      -- Unpuck values -------------------------------------
+      ------------------------------------------------------
       local b=1
-      -- 16 pcm --
-      if bitspersample==16 then
-          for i=1,sel_range_in_smpls*nchans do
-              buf[i] = string.unpack("<i2", SMPLS:sub(b,b+1)) / 32768
-              b=b+2 
-          end
-      end
-      -- 24 pcm --
-      if bitspersample==24 then
-          for i=1,sel_range_in_smpls*nchans do
-              buf[i] = string.unpack("<i3", SMPLS:sub(b,b+2)) / 8388608
-              b=b+3 
-          end
-      end
-      -- 32 fp --
-      if bitspersample==32 then
-          for i=1,sel_range_in_smpls*nchans do
-              buf[i] = string.unpack("<f", SMPLS:sub(b,b+3))
-              b=b+4 
-          end
+      for i=1, sel_range_in_smpls*nchans do
+          buf[i] = string.unpack(Pfmt, SMPLS:sub(b, b+Bps-1) ) -- val to buffer 
+          b = b+Bps 
       end
     ---------------------------------------------------------------------
+    -- Define self values  ----------------------------------------------
     ---------------------------------------------------------------------
     self.Item  = Item
     self.Take  = Take
@@ -128,96 +120,54 @@ function Wave:Get_Source()
     self.Data1 = Data1
     self.Data2 = Data2
     self.buf   = buf
+    self.Pfmt  = Pfmt
+    self.Bps   = Bps
   return true    
 end
 
 --------------------------------------------------------------------------------
 --   Draw   --------------------------------------------------------------------
 --------------------------------------------------------------------------------
--- Mono --
-function Wave:Draw_Samples()
-    local rds = 3
-    local Sx = (gfx.w-10)/self.sel_range_in_smpls
-    local Sy = (gfx.h-10)/2
-    local Yax = gfx.h/2
-    gfx.set(0.7,0.7,0.6)
-    gfx.line(0,Yax,gfx.w,Yax,true) 
-     -- Draw Samples --
-     gfx.set(0.7,0.5,0.6)
-     local x,y,x2,y2
-     for i=1, #self.buf,1 do
-         x = i*Sx;
-         -- Get mouse --
-         if gfx.mouse_cap&1==1 and math.abs(gfx.mouse_x - x)<= math.max(Sx/2,5) then 
-            self.buf[i] = (Yax- gfx.mouse_y)/Sy 
-         end 
-           -- Draw Point------------
-           y = Yax - self.buf[i]*Sy 
-           if self.sel_range_in_smpls<256 then gfx.circle(x,y,rds,true,true) end
-           -- Draw Line ------------
-           if i<#self.buf then
-            x2, y2 = (i+1)*Sx , Yax - self.buf[i+1]*Sy  
-            gfx.line(x,y,x2,y2,true)
-           end
-     end
-end
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
--- Stereo --
-function Wave:Draw_Samples_Stereo()
-    local rds = 3
-    local Sx = (gfx.w-10)/self.sel_range_in_smpls /2
-    local Sy = (gfx.h-10)/2 /2
-    local Yax  = (gfx.h/2)
-    local Yax1 = (gfx.h/4)
-    local Yax2 = (gfx.h/4)*3
-    ------------------------
-    gfx.set(0.3,0.7,0.6,0.5)
-    gfx.line(0,Yax,gfx.w,Yax,true)
-    gfx.set(0.7,0.7,0.6,0.5)
-    gfx.line(0,Yax1,gfx.w,Yax1,true)
-    gfx.line(0,Yax2,gfx.w,Yax2,true) 
-     ------------------------------
-     -- Draw Samples 1 --
-     ------------------------------
+function Wave:Draw_Samples(chan, Wx,Wy,Ww,Wh )
+    local Ay = Wy + Wh/2 -- axis y-coord 
+    local Srds = 3       -- sample "point" radius
+    -------------------
+    local Sx,Sy,Srng -- Sx,Sy = x,y smpl scales in gfx, Srng = smpl Value range
+      if self.bitspersample==32 then Srng = 1 else Srng = 2^(self.bitspersample-1) end
+      Sx = (Ww/(self.sel_range_in_smpls-1)) /self.nchans
+      Sy = (Wh/2) /Srng  
+    -- Draw axis -------
+    gfx.set(0.7,0.7,0.6,0.7)
+    gfx.line(Wx, Ay, Wx+Ww, Ay, true) 
+     ------------------------------------------
+     -- Draw Samples(and get mouse) -----------
+     ------------------------------------------
      gfx.set(0.7,0.5,0.6,1)
      local x,y,x2,y2
-     for i=1, #self.buf,2 do
-          x = i*Sx;
-          -- Get mouse 1 --------------------------------------
-          if gfx.mouse_cap&1==1 and mouse_oy<=Yax and math.abs(gfx.mouse_x - x)<= math.max(Sx,5) and 
-             gfx.mouse_y<=Yax and gfx.mouse_y>=0  then 
-             self.buf[i] = (Yax1- gfx.mouse_y)/Sy 
-          end 
-            -- Draw Point------------
-            y = Yax1 - self.buf[i]*Sy 
-            if self.sel_range_in_smpls <256 then gfx.circle(x,y,rds,true,true) end
-            -- Draw Line ------------
-            if i<#self.buf-1 then
-             x2, y2 = (i+2)*Sx , Yax1 - self.buf[i+2]*Sy  
-             gfx.line(x,y,x2,y2,true)
-            end
-     end
-     ------------------------------
-     -- Draw Samples 2 --
-     ------------------------------
-     gfx.set(0.5,0.7,0.6,1)
-     for i=2, #self.buf,2 do
-          x = (i-1)*Sx;
-          -- Get mouse 2 ---------------------------------------
-          if gfx.mouse_cap&1==1 and mouse_oy>=Yax and math.abs(gfx.mouse_x - x)<= math.max(Sx,5) and 
-             gfx.mouse_y>=Yax and gfx.mouse_y<=gfx.h  then 
-             self.buf[i] = (Yax2- gfx.mouse_y)/Sy 
-          end 
-            -- Draw Point------------
-            y = Yax2 - self.buf[i]*Sy 
-            if self.sel_range_in_smpls <256 then gfx.circle(x,y,rds,true,true) end
-            -- Draw Line ------------
-            if i<#self.buf-1 then
-               x2, y2 = (i+2-1)*Sx , Yax2 - self.buf[i+2]*Sy  
-               gfx.line(x,y,x2,y2,true)
-            end  
+     for i=chan, #self.buf, self.nchans do
+         x = Wx + (i-chan)*Sx -- sample x-position 
+         --------------------------------------
+         -- Get mouse -------------------------
+         if gfx.mouse_cap&1==1 and math.abs(gfx.mouse_x - x)<= math.max(Sx*self.nchans/2, 5) and 
+            mouse_oy>=Wy and mouse_oy<=Wy+Wh  then local smpl = (Ay - gfx.mouse_y)/Sy
+              -- valid value --
+              if self.bitspersample==16 or self.bitspersample==24 then smpl = math.floor(smpl + 0.5)
+                  if smpl>Srng-1 then smpl = Srng-1 elseif smpl< -Srng then smpl = -Srng end -- valid 16,24 smpl range
+              elseif self.bitspersample==32 then
+                  if smpl>1      then smpl = 1      elseif smpl< -1    then smpl = -1    end -- valid 32 smpl range
+              end
+            self.buf[i] = smpl -- to buffer
+         end 
+           ------------------------------------
+           -- Draw sample Point ---------------
+           y = Ay - self.buf[i]*Sy 
+           if self.sel_range_in_smpls<256 then gfx.circle(x,y,Srds,true,true) end
+           ------------------------------------
+           -- Draw line current-next sample ---
+           if i < #self.buf-self.nchans+chan then
+              x2, y2 = Wx + Wx + (i-chan+self.nchans)*Sx, Ay - self.buf[i+self.nchans]*Sy  
+              gfx.line(x,y,x2,y2,true)
+           end
      end
 end
 
@@ -236,64 +186,16 @@ function Wave:Rewrite_File()
     end
     ------------------------------------------------
     --- Buffer_to_chars ----------------------------
-    ------------------------------------------------
-    -- for 16 bit norm to int ----------------------
-     function norm_to_int16(inp)
-      local out
-          if inp<0 then 
-               if inp<=-1 then out = -32768 
-               else out = math.modf((inp * 32768)-0.5)
-               end
-            elseif inp>=(32766.5/32768.0) then out = 32767 
-            else out = math.modf((inp * 32768)+ 0.5)
-          end
-       return out
-     end
-     -- for 24 bit norm to int ---------------------
-      function norm_to_int24(inp)
-       local out
-           if inp<0 then 
-                if inp<=-1 then out = -8388608 
-                else out = math.modf((inp * 8388608)-0.5)
-                end
-             elseif inp>=(8388606.5/8388608) then out = 8388607 
-             else out = math.modf((inp * 8388608)+ 0.5)
-           end
-        return out
-      end
-    
-    ------------------------------------------------
-    ------------------------------------------------  
+    ------------------------------------------------ 
     local Data_buf = {} 
-        -- 16 pcm -----------------
-      if self.bitspersample == 16 then
-        for i=1, #self.buf do
-            local inp = self.buf[i]
-            local out = norm_to_int16(inp)
-            -----------
-            Data_buf[i] = string.pack("<i2", out) --little-endian
-        end
-      end
-        -- 24 pcm -----------------
-     if self.bitspersample == 24 then
-        for i=1, #self.buf do
-            local inp = self.buf[i]
-            local out = norm_to_int24(inp)
-            -----------
-            Data_buf[i] = string.pack("<i3", out) --little-endian 
-        end
-     end 
-        -- 32 fp ------------------
-     if self.bitspersample == 32 then 
-        for i=1, #self.buf do
-            Data_buf[i] = string.pack("<f", self.buf[i]) --little-endian
-        end  
-     end
-    
+    -- Puck values  -----
+    for i=1, #self.buf do
+        Data_buf[i] = string.pack(self.Pfmt, self.buf[i]) --little-endian
+    end    
     ------------------------------------------------
     -- Write --------------------------------------- 
     ------------------------------------------------  
-    Data = table.concat(Data_buf) -- Concat(Its wave Data!!!)  
+    local Data = table.concat(Data_buf) -- Concat(Its wave Data!!!)  
     ------------------------
     -- Write Head,Data -----
     ------------------------
@@ -324,7 +226,7 @@ function Init()
     -- Some gfx Wnd Default Values ---------------
     local R,G,B = 20,20,20              -- 0...255 format
     local Wnd_bgd = R + G*256 + B*65536 -- red+green*256+blue*65536  
-    local Wnd_Title = "TEST"
+    local Wnd_Title = "Sample Editor b1"
     local Wnd_Dock,Wnd_X,Wnd_Y = 0,100,320 
     Wnd_W,Wnd_H = 1044,490 -- global values(used for define zoom level)
     -- Init window ------
@@ -357,12 +259,15 @@ function mainloop()
     -------------------------
     -- DRAW,MAIN functions --
     -------------------------
-     if W==true then  
-       if Wave.nchans==1 then Wave:Draw_Samples() 
-         else Wave:Draw_Samples_Stereo()
+    if W==true then
+       local Wh = gfx.h/Wave.nchans 
+       for chan=1, Wave.nchans do
+           gfx.set(0.3,0.7,0.6,0.7)
+           gfx.line(0,Wh*chan, gfx.w, Wh*chan, true)  
+           Wave:Draw_Samples(chan, 0,  Wh*(chan-1),  gfx.w, Wh) -- chan, Wx,Wy,Ww,Wh  
        end
-       else gfx.setfont(1,"Ariael", 25); gfx.set(0.7,0.7,0.7); gfx.x=20; gfx.y=20; gfx.drawstr(msg)
-     end
+    else gfx.setfont(1,"Arial", 25); gfx.set(0.7,0.7,0.7); gfx.x=20; gfx.y=20; gfx.drawstr(msg)
+    end
      ----
      if gfx.mouse_cap&1==0 and last_mouse_cap&1==1 then 
         Wave:Rewrite_File() 
@@ -384,4 +289,3 @@ end
 --reaper.ClearConsole()
 Init()
 mainloop()
-
