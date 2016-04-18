@@ -93,8 +93,7 @@ function Wave:Get_Source()
       -----------------------------------------------------------------------------------
       -- Get samples --------------------------------------------------------------------
       -----------------------------------------------------------------------------------
-      --local buf={}   -- Its sample buffer!
-      local buf={}
+      local buf={}   -- Its sample buffer!
       local Pfmt,Bps -- Pack format, BYTES per sample ------
         if bitspersample==16 then Pfmt = "<i2"; Bps = 2 end
         if bitspersample==24 then Pfmt = "<i3"; Bps = 3 end
@@ -128,7 +127,7 @@ end
 --------------------------------------------------------------------------------
 --   Draw   --------------------------------------------------------------------
 --------------------------------------------------------------------------------
-function Wave:Draw_Samples(chan, Wx,Wy,Ww,Wh )
+function Wave:Draw_Samples(chan, Wx,Wy,Ww,Wh, r,g,b,a)
     local Ay = Wy + Wh/2 -- axis y-coord 
     local Srds = 3       -- sample "point" radius
     -------------------
@@ -142,7 +141,7 @@ function Wave:Draw_Samples(chan, Wx,Wy,Ww,Wh )
      ------------------------------------------
      -- Draw Samples(and get mouse) -----------
      ------------------------------------------
-     gfx.set(0.7,0.5,0.6,1)
+     gfx.set(r,g,b,a)
      local x,y,x2,y2
      for i=chan, #self.buf, self.nchans do
          x = Wx + (i-chan)*Sx -- sample x-position 
@@ -260,11 +259,13 @@ function mainloop()
     -- DRAW,MAIN functions --
     -------------------------
     if W==true then
-       local Wh = gfx.h/Wave.nchans 
+       local Wh = gfx.h/Wave.nchans
+       local r,g,b,a = 0.7,0.5,0.6,1
        for chan=1, Wave.nchans do
-           gfx.set(0.3,0.7,0.6,0.7)
-           gfx.line(0,Wh*chan, gfx.w, Wh*chan, true)  
-           Wave:Draw_Samples(chan, 0,  Wh*(chan-1),  gfx.w, Wh) -- chan, Wx,Wy,Ww,Wh  
+           gfx.set(0.4,0.7,0.3,0.7)
+           gfx.line(0,Wh*chan, gfx.w, Wh*chan, true)
+           Wave:Draw_Samples(chan, 0,  Wh*(chan-1),  gfx.w, Wh, r,g,b,a) -- chan, Wx,Wy,Ww,Wh 
+           r,g = g,r -- reverse r,g  
        end
     else gfx.setfont(1,"Arial", 25); gfx.set(0.7,0.7,0.7); gfx.x=20; gfx.y=20; gfx.drawstr(msg)
     end
