@@ -93,7 +93,7 @@ function Wave:Get_Source()
       -----------------------------------------------------------------------------------
       -- Get samples --------------------------------------------------------------------
       -----------------------------------------------------------------------------------
-      local buf={}   -- Its sample buffer!
+      local buf = {} -- Its sample buffer!
       local Pfmt,Bps -- Pack format, BYTES per sample ------
         if bitspersample==16 then Pfmt = "<i2"; Bps = 2 end
         if bitspersample==24 then Pfmt = "<i3"; Bps = 3 end
@@ -174,38 +174,49 @@ end
 --- Rewrite_Wave_File ------------------------------------------------------------
 ----------------------------------------------------------------------------------
 function Wave:Rewrite_File()
+ -----------------------------------------------------------
+ -- Offline,Online media, Rebuild peaks action IDs  --------
+ -----------------------------------------------------------
+ local OfflineID,OnlineID = 40100,40101   -- 40100,40101 = ALL; 40440,40439 = SELECTED Items
+ local RebuildID = 40047 -- 40047 = MISSING(Optimally); 40441 = SELECTED; 40048 = ALL  Peaks
+ ---------------------------------------------------
     ------------------------------------------------
     --- Open File ----------------------------------
     ------------------------------------------------
-    if self.buf and self.FilePath then reaper.Main_OnCommand(40440, 0) -- offline(40100-may be all?)
-       file = io.open(self.FilePath,"wb")                         -- file in "wb"
-       if not file then reaper.Main_OnCommand(40439, 0)
-          return reaper.MB("File Not aviable for write!", "Info", 0)
-       end
+    local file
+    if self.buf and self.FilePath then 
+       reaper.Main_OnCommand(OfflineID, 0) -- Offline media item
+       file = io.open(self.FilePath,"wb")  -- Open file in "wb"
+         -- if file not aviable --
+         if not file then 
+            reaper.Main_OnCommand(OnlineID, 0) -- Online media item
+            return reaper.MB("File Not aviable for write!", "Info", 0)
+         end
     end
-    ------------------------------------------------
-    --- Buffer_to_chars ----------------------------
-    ------------------------------------------------ 
+    ---------------------------------------------------
+    --- Buffer_to_chars -------------------------------
+    --------------------------------------------------- 
     local Data_buf = {} 
     -- Puck values  -----
     for i=1, #self.buf do
         Data_buf[i] = string.pack(self.Pfmt, self.buf[i]) --little-endian
     end    
-    ------------------------------------------------
-    -- Write --------------------------------------- 
-    ------------------------------------------------  
+    ---------------------------------------------------
+    -- Concat Data table  -----------------------------
+    ---------------------------------------------------  
     local Data = table.concat(Data_buf) -- Concat(Its wave Data!!!)  
-    ------------------------
-    -- Write Head,Data -----
-    ------------------------
+    ---------------------------
+    -- Write Data to file -----
+    ---------------------------
     file:write(self.Data1,Data,self.Data2)
     file:close()
-    ------------------------
-    ------------------------
-    reaper.Main_OnCommand(40439, 0) -- online(40101-may be all?)
-    reaper.Main_OnCommand(40441, 0) -- rebuild peaks 
-    reaper.UpdateItemInProject(reaper.GetSelectedMediaItem(0, 0))
-    reaper.UpdateArrange()
+    ---------------------------------------------------
+    -- Online media, Rebuild peaks, Update ------------
+    ---------------------------------------------------
+    reaper.Main_OnCommand(OnlineID, 0)    -- Online media item
+    reaper.Main_OnCommand(RebuildID, 0)   -- Rebuild peaks after changes  
+    reaper.UpdateItemInProject(self.Item) -- Just in case, not necessarily
+    reaper.UpdateArrange()                -- Update Arrange
 end
 
 --------------------------------------------------------------------------------
