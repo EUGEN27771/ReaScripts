@@ -1,4 +1,5 @@
-local Wave = {}
+local Wave = {} -- Main table
+Undo = {} -- For Undo data
 -------------------------
 -------------------------
 -------------------------
@@ -68,8 +69,8 @@ function Wave:Get_Source()
       local sel_start_in_item, sel_end_in_item
       sel_start_in_item = math.max(sel_start - Item_start, 0)      -- sel start in item(time), 0 if < item start
       sel_end_in_item   = math.min(sel_end - Item_start, Item_len) -- sel end in item(time), Item_len if > item end
-      if sel_start_in_item>=Item_len or sel_end_in_item<=0 then return false,"Selection out of item or no exist" end
-      if sel_end_in_item - sel_start_in_item > 0.1 then sel_end_in_item = sel_start_in_item + 0.1 end -- Limit Selection !
+      if sel_start_in_item>=Item_len or sel_end_in_item<=0 then return false,"Time Selection out of item or no exist!" end
+      if sel_end_in_item - sel_start_in_item > 0.1 then sel_end_in_item = sel_start_in_item + 0.1 end -- Limit Sel(100ms)!!!
       ------------------------------------------------------------------
       -- Sel Range to item samples(and round inward sel) ---------------
       ------------------------------------------------------------------
@@ -82,7 +83,7 @@ function Wave:Get_Source()
       ----------------------------------------------------------------------
       -- Simple scheme   ||1 -- |D1 (processed part) -- |D2 -- ||   --------
       ----------------------------------------------------------------------
-      local  D1, D2, D3
+      local  D1, D2
       D1 = Datablock +  (sel_start_in_smpls-1) * blockalign -- Start_Byte
       D2 = D1 +  sel_range_in_smpls * blockalign 
       -------------------------------------------------------
@@ -121,6 +122,12 @@ function Wave:Get_Source()
     self.buf   = buf
     self.Pfmt  = Pfmt
     self.Bps   = Bps
+    -------------------------------
+    -- Info For Undo  -------------
+    -------------------------------
+    self.D1 = D1       -- D1 point
+    self.D2 = D2       -- D2 point
+    self.SMPLS = SMPLS -- Original SMPLS part
   return true    
 end
 
@@ -188,8 +195,7 @@ function Wave:Rewrite_File()
        reaper.Main_OnCommand(OfflineID, 0) -- Offline media item
        file = io.open(self.FilePath,"wb")  -- Open file in "wb"
          -- if file not aviable --
-         if not file then 
-            reaper.Main_OnCommand(OnlineID, 0) -- Online media item
+         if not file then reaper.Main_OnCommand(OnlineID, 0) -- Online media item
             return reaper.MB("File Not aviable for write!", "Info", 0)
          end
     end
@@ -218,7 +224,65 @@ function Wave:Rewrite_File()
     reaper.UpdateItemInProject(self.Item) -- Just in case, not necessarily
     reaper.UpdateArrange()                -- Update Arrange
 end
-
+--------------------------------------------------------------------------------
+--  Create Undo point   --------------------------------------------------------
+--------------------------------------------------------------------------------
+function Create_Undo_Point()
+    local UndoPoint = {FilePath = Wave.FilePath,
+                       D1 = Wave.D1, 
+                       D2 = Wave.D2,
+                       SMPLS = Wave.SMPLS}
+    table.insert(Undo, UndoPoint) -- insert UndoPoint to Undo table
+end
+--------------------------------------------------------------------------------
+--  UNDO   ---------------------------------------------------------------------
+--------------------------------------------------------------------------------
+function Apply_UNDO()
+  local UndoPoint
+  local Pn = #Undo -- Last UndoPoint in Undo table
+  if Pn>0 then UndoPoint = Undo[Pn] else return reaper.MB("No Undo Points!" , "Info", 0) end
+  local FilePath = UndoPoint.FilePath
+  local D1 = UndoPoint.D1
+  local D2 = UndoPoint.D2
+  local SMPLS = UndoPoint.SMPLS
+    --------------------------------------------------------
+    -- Open File, Read Data1, Data2 ------------------------
+    --------------------------------------------------------
+    local file = io.open(FilePath,"rb")  -- open file, rb mode
+    if not file then return reaper.MB("File Not aviable!", "Info", 0) end -- if not available 
+    local Data = file:read("*a")         -- read(all)
+    file:close()                         -- close file
+    ------------------------------------------------
+    local Data1 ,Data2 
+    Data1 = Data:sub(1, D1 - 1)  -- ||1 -- |
+    Data2 = Data:sub( D2)        -- |D2 -- ||
+    ------------------------------------------------
+    --- Open File for Write ------------------------
+    ------------------------------------------------
+    local OfflineID,OnlineID = 40100,40101   -- 40100,40101 = ALL; 40440,40439 = SELECTED Items
+    local RebuildID = 40047 -- 40047 = MISSING(Optimally); 40441 = SELECTED; 40048 = ALL  Peaks
+    -----------------------------------------------
+    reaper.Main_OnCommand(OfflineID, 0) -- Offline media items
+    file = io.open( FilePath,"wb")      -- Open file in "wb"
+     -- if file not aviable --
+     if not file then reaper.Main_OnCommand(OnlineID, 0) -- Online media item
+        return reaper.MB("File Not aviable for write!", "Info", 0)
+     end
+    --------------------------------
+    -- Write Undo Data to file -----
+    --------------------------------
+    file:write(Data1,  SMPLS, Data2)
+    file:close()
+    ---------------------------------------------------
+    -- Online media, Rebuild peaks, Update ------------
+    ---------------------------------------------------
+    reaper.Main_OnCommand(OnlineID, 0)    -- Online media item
+    reaper.Main_OnCommand(RebuildID, 0)   -- Rebuild peaks after changes  
+    reaper.UpdateArrange()                -- Update Arrange
+  --------------------------------------------------------
+  --------------------------------------------------------
+  table.remove(Undo) -- Remove Last Undo Point 
+end
 --------------------------------------------------------------------------------
 --   Proj_Change   -------------------------------------------------------------
 --------------------------------------------------------------------------------
@@ -280,10 +344,15 @@ function mainloop()
        end
     else gfx.setfont(1,"Arial", 25); gfx.set(0.7,0.7,0.7); gfx.x=20; gfx.y=20; gfx.drawstr(msg)
     end
-     ----
-     if gfx.mouse_cap&1==0 and last_mouse_cap&1==1 then 
-        Wave:Rewrite_File() 
+    -------------------------
+    -------------------------
+     if gfx.mouse_cap&1==0 and last_mouse_cap&1==1 then
+        Create_Undo_Point() -- Create Undo Point 
+        Wave:Rewrite_File() -- Apply Changes to file
      end
+    -------------------------
+    --- Mouse R - Undo ------
+    if gfx.mouse_cap&2==0 and last_mouse_cap&2==2 then Apply_UNDO() end -- Undo
     -------------------------
     -------------------------
     last_mouse_cap = gfx.mouse_cap
