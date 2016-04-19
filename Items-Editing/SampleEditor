@@ -1,5 +1,5 @@
 local Wave = {} -- Main table
-Undo = {} -- For Undo data
+local Undo = {} -- For Undo data
 -------------------------
 -------------------------
 -------------------------
