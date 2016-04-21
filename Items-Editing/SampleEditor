@@ -7,8 +7,8 @@ function Wave:Get_Source()
    local Item, Take, Source, Source_type
       ------------------------------------------------------------------
       Item = reaper.GetSelectedMediaItem(0, 0)
-      if Item   then Take = reaper.GetActiveTake(Item) else  return  false,"No Selected Items!"  end 
-      if Take   then Source = reaper.GetMediaItemTake_Source(Take) else  return  false,"Empty item!" end
+      if Item   then Take = reaper.GetActiveTake(Item) else  return  false, "No Selected Items!"  end 
+      if Take   then Source = reaper.GetMediaItemTake_Source(Take) else  return  false, "Empty item!" end
       if Source then Source_type = reaper.GetMediaSourceType(Source,"") end
       -- Fix in future for section ? --
       --[[if Source_type=="SECTION" then Source_type = reaper.GetMediaSourceParent(Source)
@@ -17,13 +17,13 @@ function Wave:Get_Source()
           local ret, src_offs, src_len, src_rev = reaper.PCM_Source_GetSectionInfo(Source) -- Source_GetSectionInfo,need in future
         ]] 
       ------------------------------------------------------------------
-      if Source_type~="WAVE" then return  false,"Invalide Type - "..Source_type end
+      if Source_type~="WAVE" then return  false, "Invalide Type - "..Source_type end
       ------------------------------------------------------------------
       -- Read data from wav file ---------------------------------------
       ------------------------------------------------------------------
       local FilePath  = reaper.GetMediaSourceFileName(Source , "") -- Source FilePath
       local file = io.open(FilePath,"rb")  -- open file, rb mode
-      if not file then return false,"File not available!"  end -- if not available 
+      if not file then return false, "File not available!"  end -- if not available 
       local Data = file:read("*a")         -- read(all)
       file:close()                         -- close file
       --------------------------------------------------------
@@ -37,15 +37,15 @@ function Wave:Get_Source()
       local blockalign    = string.unpack("<I2", Data:sub(33,34))
       local bitspersample = string.unpack("<I2", Data:sub(35,36))
       -- If format not supported -----------------------------
-      if not((audioFormat==1 and (bitspersample==16 or bitspersample==24)) or (audioFormat==3 and bitspersample==32)) then 
-        return  "Format is not supported - "..audioFormat..", "..bitspersample 
-      --elseif not(nchans==1 or nchans==2) then  return false,"Multichannels is not supported - "..nchans  
+      if     audioFormat==1 and (bitspersample==16 or bitspersample==24) then  -- true format
+      elseif audioFormat==3 and (bitspersample==32 or bitspersample==64) then  -- true format
+      else return  false, "Not supported - ".."format "..audioFormat..", "..bitspersample.."bit"
       end
       -------------------------------------------------------- 
       local i,j = Data:find("data")  -- find "data" in file
       local subchunk2Size = string.unpack("<I4", Data:sub(j+1,j+4)) -- Data size(in bytes)
       local Datablock = j+5          -- Its Datablock start - attn 1-based !!!
-      --- Check data(info) -----------------------------------
+      --- Check data(info) ---------------------------------------------
       --[[
       reaper.ShowConsoleMsg("audioFormat = "..audioFormat.."\n"..
                             "nchans = "..nchans.."\n"..
@@ -54,8 +54,7 @@ function Wave:Get_Source()
                             "blockalign = "..blockalign.."\n"..
                             "bitspersample = "..bitspersample.."\n"..
                             "Data size(in bytes) = "..subchunk2Size.."\n"..
-                            "Datablock start(1-based) = "..Datablock.."\n")
-        ]] 
+                            "Datablock start(1-based) = "..Datablock.."\n")  --]] 
       ------------------------------------------------------------------
       -- Define selection range ----------------------------------------
       ------------------------------------------------------------------
@@ -69,7 +68,7 @@ function Wave:Get_Source()
       local sel_start_in_item, sel_end_in_item
       sel_start_in_item = math.max(sel_start - Item_start, 0)      -- sel start in item(time), 0 if < item start
       sel_end_in_item   = math.min(sel_end - Item_start, Item_len) -- sel end in item(time), Item_len if > item end
-      if sel_start_in_item>=Item_len or sel_end_in_item<=0 then return false,"Time Selection out of item or no exist!" end
+      if sel_start_in_item>=Item_len or sel_end_in_item<=0 then return false, "Time Selection out of item or no exist!" end
       if sel_end_in_item - sel_start_in_item > 0.1 then sel_end_in_item = sel_start_in_item + 0.1 end -- Limit Sel(100ms)!!!
       ------------------------------------------------------------------
       -- Sel Range to item samples(and round inward sel) ---------------
@@ -79,7 +78,7 @@ function Wave:Get_Source()
       sel_start_in_smpls = math.ceil(sel_start_in_item*Proj_srate)+1 --  in item smpls,attn 1-based !!!
       sel_end_in_smpls   = math.floor(sel_end_in_item*Proj_srate)+1  --  in item smpls,attn 1-based !!!
       sel_range_in_smpls = sel_end_in_smpls - sel_start_in_smpls +1
-      if sel_range_in_smpls<2 then return false,"Sel < 2 smpls"  end
+      if sel_range_in_smpls<2 then return false, "Sel < 2 smpls" end
       ----------------------------------------------------------------------
       -- Simple scheme   ||1 -- |D1 (processed part) -- |D2 -- ||   --------
       ----------------------------------------------------------------------
@@ -99,6 +98,7 @@ function Wave:Get_Source()
         if bitspersample==16 then Pfmt = "<i2"; Bps = 2 end
         if bitspersample==24 then Pfmt = "<i3"; Bps = 3 end
         if bitspersample==32 then Pfmt = "<f" ; Bps = 4 end
+        if bitspersample==64 then Pfmt = "<d" ; Bps = 8 end
       ------------------------------------------------------
       -- Unpuck values -------------------------------------
       ------------------------------------------------------
@@ -139,7 +139,7 @@ function Wave:Draw_Samples(chan, Wx,Wy,Ww,Wh, r,g,b,a)
     local Srds = 3       -- sample "point" radius
     -------------------
     local Sx,Sy,Srng -- Sx,Sy = x,y smpl scales in gfx, Srng = smpl Value range
-      if self.bitspersample==32 then Srng = 1 else Srng = 2^(self.bitspersample-1) end
+      if self.Pfmt == "<f" or self.Pfmt == "<d" then Srng = 1 else Srng = 2^(self.bitspersample-1) end
       Sx = (Ww/(self.sel_range_in_smpls-1)) /self.nchans
       Sy = (Wh/2) /Srng  
     -- Draw axis -------
@@ -157,9 +157,9 @@ function Wave:Draw_Samples(chan, Wx,Wy,Ww,Wh, r,g,b,a)
          if gfx.mouse_cap&1==1 and math.abs(gfx.mouse_x - x)<= math.max(Sx*self.nchans/2, 5) and 
             mouse_oy>=Wy and mouse_oy<=Wy+Wh  then local smpl = (Ay - gfx.mouse_y)/Sy
               -- valid value --
-              if self.bitspersample==16 or self.bitspersample==24 then smpl = math.floor(smpl + 0.5)
+              if self.Pfmt == "<i2" or self.Pfmt == "<i3" then smpl = math.floor(smpl + 0.5)
                   if smpl>Srng-1 then smpl = Srng-1 elseif smpl< -Srng then smpl = -Srng end -- valid 16,24 smpl range
-              elseif self.bitspersample==32 then
+              elseif self.Pfmt == "<f" or self.Pfmt == "<d" then
                   if smpl>1      then smpl = 1      elseif smpl< -1    then smpl = -1    end -- valid 32 smpl range
               end
             self.buf[i] = smpl -- to buffer
@@ -205,7 +205,7 @@ function Wave:Rewrite_File()
     local Data_buf = {} 
     -- Puck values  -----
     for i=1, #self.buf do
-        Data_buf[i] = string.pack(self.Pfmt, self.buf[i]) --little-endian
+        Data_buf[i] = string.pack(self.Pfmt, self.buf[i]) -- little-endian
     end    
     ---------------------------------------------------
     -- Concat Data table  -----------------------------
@@ -320,9 +320,9 @@ function mainloop()
     if Z_w<0.6 then Z_w = 0.6 elseif Z_w>2 then Z_w = 2 end 
     if Z_h<0.6 then Z_h = 0.6 elseif Z_h>2 then Z_h = 2 end 
     -- mouse and modkeys --
-    if gfx.mouse_cap&1==1   and last_mouse_cap&1==0  or   --L mouse
-       gfx.mouse_cap&2==2   and last_mouse_cap&2==0  or   --R mouse
-       gfx.mouse_cap&64==64 and last_mouse_cap&64==0 then --M mouse
+    if gfx.mouse_cap&1==1   and last_mouse_cap&1==0  or   -- L mouse
+       gfx.mouse_cap&2==2   and last_mouse_cap&2==0  or   -- R mouse
+       gfx.mouse_cap&64==64 and last_mouse_cap&64==0 then -- M mouse
        mouse_ox, mouse_oy = gfx.mouse_x, gfx.mouse_y 
     end
     Ctrl  = gfx.mouse_cap&4==4   -- Ctrl  state
@@ -342,7 +342,7 @@ function mainloop()
            Wave:Draw_Samples(chan, 0,  Wh*(chan-1),  gfx.w, Wh, r,g,b,a) -- chan, Wx,Wy,Ww,Wh 
            r,g = g,r -- reverse r,g  
        end
-    else gfx.setfont(1,"Arial", 25); gfx.set(0.7,0.7,0.7); gfx.x=20; gfx.y=20; gfx.drawstr(msg)
+    else gfx.setfont(1,"Arial", 25); gfx.set(0.7,0.7,0.5,1); gfx.x=20; gfx.y=20; gfx.drawstr(msg)
     end
     -------------------------
     -------------------------
@@ -358,8 +358,8 @@ function mainloop()
     last_mouse_cap = gfx.mouse_cap
     last_x, last_y = gfx.mouse_x, gfx.mouse_y
     char = gfx.getchar() 
-    if char==32 then reaper.Main_OnCommand(40044, 0) end --play
-    if char~=-1 then reaper.defer(mainloop) end          --defer       
+    if char==32 then reaper.Main_OnCommand(40044, 0) end -- play
+    if char~=-1 then reaper.defer(mainloop) end          -- defer       
     -----------  
     gfx.update()
     -----------
