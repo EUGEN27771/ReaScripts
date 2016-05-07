@@ -10,7 +10,7 @@ function Wave:Get_Source()
       if Item   then Take = reaper.GetActiveTake(Item) else  return  false, "No Selected Items!"  end 
       if Take   then Source = reaper.GetMediaItemTake_Source(Take) else  return  false, "Empty item!" end
       if Source then Source_type = reaper.GetMediaSourceType(Source,"") end
-      -- Fix in future for section ? --
+      -- Fix in future for section ??? --
       --[[if Source_type=="SECTION" then Source_type = reaper.GetMediaSourceParent(Source)
              reaper.MB("Sec,fix in future","Info", 0) return 
           end
@@ -36,15 +36,15 @@ function Wave:Get_Source()
       local byterate      = string.unpack("<I4", Data:sub(29,32))
       local blockalign    = string.unpack("<I2", Data:sub(33,34))
       local bitspersample = string.unpack("<I2", Data:sub(35,36))
-      -- If format not supported -----------------------------
-      if     audioFormat==1 and (bitspersample==16 or bitspersample==24) then  -- true format
-      elseif audioFormat==3 and (bitspersample==32 or bitspersample==64) then  -- true format
-      else return  false, "Not supported - ".."format "..audioFormat..", "..bitspersample.."bit"
-      end
-      -------------------------------------------------------- 
+        -- If format not supported -----------------------------
+        if     audioFormat==1 and (bitspersample==16 or bitspersample==24) then  -- true format
+        elseif audioFormat==3 and (bitspersample==32 or bitspersample==64) then  -- true format
+        else return  false, "Not supported - ".."format "..audioFormat..", "..bitspersample.."bit"
+        end
+      ---------------------------------------------------------- 
       local i,j = Data:find("data")  -- find "data" in file
-      local subchunk2Size = string.unpack("<I4", Data:sub(j+1,j+4)) -- Data size(in bytes)
-      local Datablock = j+5          -- Its Datablock start - attn 1-based !!!
+      local subchunk2Size = string.unpack("<I4", Data:sub(j+1,j+4)) -- data size(in bytes)
+      local Datablock = j+5          -- Its Datablock start -  1-based !!!
       --- Check data(info) ---------------------------------------------
       --[[
       reaper.ShowConsoleMsg("audioFormat = "..audioFormat.."\n"..
@@ -53,35 +53,54 @@ function Wave:Get_Source()
                             "srate = "..srate.."\n"..
                             "blockalign = "..blockalign.."\n"..
                             "bitspersample = "..bitspersample.."\n"..
-                            "Data size(in bytes) = "..subchunk2Size.."\n"..
+                            "data size(in bytes) = "..subchunk2Size.."\n"..
                             "Datablock start(1-based) = "..Datablock.."\n")  --]] 
-      ------------------------------------------------------------------
-      -- Define selection range ----------------------------------------
-      ------------------------------------------------------------------
-      local Item_start, Item_len, Item_end, sel_start, sel_end
+      --------------------------------------------------------------------------------------------------------
+      -- Calculate Time Selection range ----------------------------------------------------------------------
+      --------------------------------------------------------------------------------------------------------
+      local sel_start, sel_end = reaper.GetSet_LoopTimeRange(false,false,0,0,false) -- time-sel start, end
+      if (sel_end - sel_start)==0 then return false, "No selection!" end
+      ------------------------------------
+      -- Item start, len, end info -------
+      local Item_start, Item_len, Item_end
       Item_start = reaper.GetMediaItemInfo_Value(Item,'D_POSITION')
       Item_len   = reaper.GetMediaItemInfo_Value(Item,'D_LENGTH')
       Item_end   = Item_start + Item_len
-      sel_start, sel_end = reaper.GetSet_LoopTimeRange(false,false,0,0,false) -- sel start, end
-      ------------------------------------------------------------------
-      -- Range to item time(and correction to item start-end) ----------
+      ------------------------------------
+      -- Time Sel to Item time -----------
       local sel_start_in_item, sel_end_in_item
-      sel_start_in_item = math.max(sel_start - Item_start, 0)      -- sel start in item(time), 0 if < item start
-      sel_end_in_item   = math.min(sel_end - Item_start, Item_len) -- sel end in item(time), Item_len if > item end
-      if sel_start_in_item>=Item_len or sel_end_in_item<=0 then return false, "Time Selection out of item or no exist!" end
-      if sel_end_in_item - sel_start_in_item > 0.1 then sel_end_in_item = sel_start_in_item + 0.1 end -- Limit Sel(100ms)!!!
-      ------------------------------------------------------------------
-      -- Sel Range to item samples(and round inward sel) ---------------
-      ------------------------------------------------------------------
-      local Proj_srate = srate -- fix it, it must be real Proj_srate for correct support resampled items!!! 
+      sel_start_in_item =  math.max( sel_start - Item_start,        0 )
+      sel_end_in_item   =  math.min( sel_end   - Item_start, Item_len )
+        -- if selection out of item ! ----
+        if sel_start_in_item>=Item_len or sel_end_in_item<=0 then return false, "Selection out of Item!" end
+      ------------------------------------
+      -- Time Sel to Source time ---------
+      local offset,playrate, source_len,lenIsQN, sel_start_in_source,sel_end_in_source 
+      offset   = reaper.GetMediaItemTakeInfo_Value(Take, 'D_STARTOFFS')
+      playrate = reaper.GetMediaItemTakeInfo_Value(Take, 'D_PLAYRATE')
+      source_len, lenIsQN = reaper.GetMediaSourceLength(Source)
+      sel_start_in_source = math.max( sel_start_in_item * playrate + offset , 0          )
+      sel_end_in_source   = math.min( sel_end_in_item   * playrate + offset , source_len )
+        -- if selection out of source ! --
+        if sel_start_in_source>=source_len or sel_end_in_source<=0 then return false, "Selection out of Source!" end
+        -- Limit Selection to 100ms(deliberate limitation) !!! --
+        if sel_end_in_source - sel_start_in_source > 0.1 then sel_end_in_source = sel_start_in_source + 0.1 end
+      ---------------------------------------------------------------------------
+      ---------------------------------------------------------------------------
+      -- Time Selection to item samples(use source srate and round inward sel) --
+      ---------------------------------------------------------------------------
       local sel_start_in_smpls, sel_end_in_smpls, sel_range_in_smpls
-      sel_start_in_smpls = math.ceil(sel_start_in_item*Proj_srate)+1 --  in item smpls,attn 1-based !!!
-      sel_end_in_smpls   = math.floor(sel_end_in_item*Proj_srate)+1  --  in item smpls,attn 1-based !!!
-      sel_range_in_smpls = sel_end_in_smpls - sel_start_in_smpls +1
-      if sel_range_in_smpls<2 then return false, "Sel < 2 smpls" end
-      ----------------------------------------------------------------------
-      -- Simple scheme   ||1 -- |D1 (processed part) -- |D2 -- ||   --------
-      ----------------------------------------------------------------------
+      sel_start_in_smpls = math.ceil(sel_start_in_source * srate) + 1 -- in samples, 1-based !!!
+      sel_end_in_smpls   = math.floor(sel_end_in_source  * srate) + 1 -- in samples, 1-based !!!
+      sel_end_in_smpls   = math.min(sel_end_in_smpls, subchunk2Size/blockalign) -- verify sel_end
+      sel_range_in_smpls = sel_end_in_smpls - sel_start_in_smpls + 1 -- sel range to samples !!!
+        -- if selection < 2 smpls ! ------
+        if sel_range_in_smpls<2 then return false, "Selection < 2 smpls" end
+      
+      --------------------------------------------------------------------------------------------------------
+      --------------------------------------------------------------------------------------------------------
+      -- Simple scheme   ||1 -- |D1 (processed part) -- |D2 -- ||   ------------------------------------------
+      --------------------------------------------------------------------------------------------------------
       local  D1, D2
       D1 = Datablock +  (sel_start_in_smpls-1) * blockalign -- Start_Byte
       D2 = D1 +  sel_range_in_smpls * blockalign 
@@ -182,7 +201,7 @@ end
 ----------------------------------------------------------------------------------
 function Wave:Rewrite_File()
  -----------------------------------------------------------
- -- Offline,Online media, Rebuild peaks action IDs  --------
+ -- Offline,Online media and Rebuild peaks action IDs  -----
  -----------------------------------------------------------
  local OfflineID,OnlineID = 40100,40101   -- 40100,40101 = ALL; 40440,40439 = SELECTED Items
  local RebuildID = 40047 -- 40047 = MISSING(Optimally); 40441 = SELECTED; 40048 = ALL  Peaks
@@ -253,7 +272,7 @@ function Apply_UNDO()
     local Data = file:read("*a")         -- read(all)
     file:close()                         -- close file
     ------------------------------------------------
-    local Data1 ,Data2 
+    local Data1, Data2 
     Data1 = Data:sub(1, D1 - 1)  -- ||1 -- |
     Data2 = Data:sub( D2)        -- |D2 -- ||
     ------------------------------------------------
@@ -300,7 +319,7 @@ function Init()
     -- Some gfx Wnd Default Values ---------------
     local R,G,B = 20,20,20              -- 0...255 format
     local Wnd_bgd = R + G*256 + B*65536 -- red+green*256+blue*65536  
-    local Wnd_Title = "Sample Editor b1"
+    local Wnd_Title = "Sample Editor b2"
     local Wnd_Dock,Wnd_X,Wnd_Y = 0,100,320 
     Wnd_W,Wnd_H = 1044,490 -- global values(used for define zoom level)
     -- Init window ------
@@ -342,7 +361,7 @@ function mainloop()
            Wave:Draw_Samples(chan, 0,  Wh*(chan-1),  gfx.w, Wh, r,g,b,a) -- chan, Wx,Wy,Ww,Wh 
            r,g = g,r -- reverse r,g  
        end
-    else gfx.setfont(1,"Arial", 25); gfx.set(0.7,0.7,0.5,1); gfx.x=20; gfx.y=20; gfx.drawstr(msg)
+    else gfx.setfont(1,"Arial", 25); gfx.set(0.8,0.7,0.5,1); gfx.x=20; gfx.y=20; gfx.drawstr(msg)
     end
     -------------------------
     -------------------------
@@ -367,6 +386,5 @@ end
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
---reaper.ClearConsole()
 Init()
 mainloop()
