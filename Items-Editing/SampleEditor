@@ -155,12 +155,12 @@ end
 --------------------------------------------------------------------------------
 function Wave:Draw_Samples(chan, Wx,Wy,Ww,Wh, r,g,b,a)
     local Ay = Wy + Wh/2 -- axis y-coord 
-    local Srds = 3       -- sample "point" radius
+    local Srds = 2       -- sample "point" radius
     -------------------
     local Sx,Sy,Srng -- Sx,Sy = x,y smpl scales in gfx, Srng = smpl Value range
       if self.Pfmt == "<f" or self.Pfmt == "<d" then Srng = 1 else Srng = 2^(self.bitspersample-1) end
       Sx = (Ww/(self.sel_range_in_smpls-1)) /self.nchans
-      Sy = (Wh/2) /Srng  
+      Sy = (Wh/2) /Srng * V_Zoom 
     -- Draw axis -------
     gfx.set(0.7,0.7,0.6,0.7)
     gfx.line(Wx, Ay, Wx+Ww, Ay, true) 
@@ -183,14 +183,24 @@ function Wave:Draw_Samples(chan, Wx,Wy,Ww,Wh, r,g,b,a)
               end
             self.buf[i] = smpl -- to buffer
          end 
-           ------------------------------------
-           -- Draw sample Point ---------------
-           y = Ay - self.buf[i]*Sy 
+           ---------------------------------------
+           -- Draw sample Point ------------------
+           local Vy = self.buf[i]*Sy -- sample "y-value"
+             if Vy>0 and Vy>Wh/2 then Vy = Wh/2 
+             elseif Vy<0 and Vy<-Wh/2 then Vy = -Wh/2 
+             end
+           y = Ay - Vy               -- sample y-position 
+           ---------------------------------------
            if self.sel_range_in_smpls<256 then gfx.circle(x,y,Srds,true,true) end
-           ------------------------------------
-           -- Draw line current-next sample ---
+           ---------------------------------------
+           -- Draw line = current-next sample ----
            if i < #self.buf-self.nchans+chan then
-              x2, y2 = Wx + Wx + (i-chan+self.nchans)*Sx, Ay - self.buf[i+self.nchans]*Sy  
+              x2 = Wx + Wx + (i-chan+self.nchans)*Sx -- next sample x-position
+              local Vy2 = self.buf[i+self.nchans]*Sy -- next sample "y-value"
+                 if Vy2>0 and Vy2>Wh/2 then Vy2 = Wh/2 
+                 elseif Vy2<0 and Vy2<-Wh/2 then Vy2 = -Wh/2 
+                 end
+              y2 = Ay - Vy2                          -- next sample y-position
               gfx.line(x,y,x2,y2,true)
            end
      end
@@ -329,6 +339,7 @@ function Init()
     last_mouse_cap = 0
     last_x, last_y = 0, 0
     mouse_ox, mouse_oy = -1, -1
+    V_Zoom = 1 --Vertical zoom level
 end
 ----------------------------------------
 --   Mainloop   ------------------------
@@ -363,17 +374,24 @@ function mainloop()
        end
     else gfx.setfont(1,"Arial", 25); gfx.set(0.8,0.7,0.5,1); gfx.x=20; gfx.y=20; gfx.drawstr(msg)
     end
-    -------------------------
-    -------------------------
+    --------------------------
+    --- Mouse L - Edit -------
      if gfx.mouse_cap&1==0 and last_mouse_cap&1==1 then
         Create_Undo_Point() -- Create Undo Point 
         Wave:Rewrite_File() -- Apply Changes to file
      end
-    -------------------------
-    --- Mouse R - Undo ------
+    --------------------------
+    --- Mouse R - Undo -------
     if gfx.mouse_cap&2==0 and last_mouse_cap&2==2 then Apply_UNDO() end -- Undo
-    -------------------------
-    -------------------------
+    --------------------------
+    --- M_Wheel - Vert Zoom --
+    if gfx.mouse_wheel~=0 and not(Ctrl or Shift) then 
+       local M_Wheel = gfx.mouse_wheel; gfx.mouse_wheel = 0
+        if     M_Wheel>0 then V_Zoom = math.min(V_Zoom*1.2, 50) 
+        elseif M_Wheel<0 then V_Zoom = math.max(V_Zoom*0.8, 1) 
+        end 
+    end
+    --------------------------
     last_mouse_cap = gfx.mouse_cap
     last_x, last_y = gfx.mouse_x, gfx.mouse_y
     char = gfx.getchar() 
