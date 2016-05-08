@@ -96,7 +96,7 @@ function Button:draw()
     local x,y,w,h  = self.x,self.y,self.w,self.h
     local r,g,b,a  = self.r,self.g,self.b,self.a
     local fnt,fnt_sz = self.fnt, self.fnt_sz
-    -- Get L_mouse state --
+    -- Get mouse state --
           -- in element --
           if self:mouseIN() then a=a+0.1 end
           -- in elm L_down --
@@ -137,6 +137,14 @@ function Knob:set_norm_val()
     self.norm_val=VAL
 end
 --------
+function Knob:set_norm_val_m_wheel()
+    local Step = 0.05 -- Set step
+    if gfx.mouse_wheel == 0 then return end  -- return if m_wheel = 0
+    if gfx.mouse_wheel > 0 then self.norm_val = math.min(self.norm_val+Step, 1) end
+    if gfx.mouse_wheel < 0 then self.norm_val = math.max(self.norm_val-Step, 0) end
+    return true
+end
+--------
 function Knob:draw_body()
     local x,y,w,h  = self.x,self.y,self.w,self.h
     local k_x, k_y, r = x+w/2, y+h/2, (w+h)/4
@@ -161,7 +169,7 @@ end
 --------
 function Knob:draw_val()
     local x,y,w,h  = self.x,self.y,self.w,self.h
-    local val = string.format("%.1f", self.norm_val)
+    local val = string.format("%.2f", self.norm_val)
     local val_w, val_h = gfx.measurestr(val)
     gfx.x = x+(w-val_w)/2; gfx.y = (y+h/2)-val_h-3
     gfx.drawstr(val) -- draw knob Value
@@ -173,9 +181,13 @@ function Knob:draw()
     local x,y,w,h  = self.x,self.y,self.w,self.h
     local r,g,b,a  = self.r,self.g,self.b,self.a
     local fnt,fnt_sz = self.fnt, self.fnt_sz
-    -- Get L_mouse state --
-          -- in element --
-          if self:mouseIN() then a=a+0.1 end
+    -- Get mouse state --
+          -- in element(and get mouswheel) --
+          if self:mouseIN() then a=a+0.1
+             if self:set_norm_val_m_wheel() then 
+                if self.onMove then self.onMove() end 
+             end  
+          end
           -- in elm L_down --
           if self:mouseDown() then a=a+0.2 
              self:set_norm_val()
@@ -198,6 +210,15 @@ end
 --------------------------------------------------------------------------------
 ---   Slider Class Methods   ---------------------------------------------------
 --------------------------------------------------------------------------------
+----------------
+function Slider:set_norm_val_m_wheel()
+    local Step = 0.05 -- Set step
+    if gfx.mouse_wheel == 0 then return false end  -- return if m_wheel = 0
+    if gfx.mouse_wheel > 0 then self.norm_val = math.min(self.norm_val+Step, 1) end
+    if gfx.mouse_wheel < 0 then self.norm_val = math.max(self.norm_val-Step, 0) end
+    return true
+end
+----------------
 function H_Slider:set_norm_val()
     local x,y,w,h  = self.x,self.y,self.w,self.h
     local VAL,K = 0,10 --val=temp value;k=koof(when Ctrl pressed)
@@ -241,14 +262,14 @@ end
 ----------------
 function H_Slider:draw_val()
     local x,y,w,h  = self.x,self.y,self.w,self.h
-    local val = string.format("%.1f", self.norm_val)
+    local val = string.format("%.2f", self.norm_val)
     local val_w, val_h = gfx.measurestr(val)
     gfx.x = x+w-val_w-5
     gfx.drawstr(val)--draw H_Slider Value
 end
 function V_Slider:draw_val()
     local x,y,w,h  = self.x,self.y,self.w,self.h
-    local val = string.format("%.1f", self.norm_val)
+    local val = string.format("%.2f", self.norm_val)
     local val_w, val_h = gfx.measurestr(val)
     gfx.x = x+(w-val_w)/2; gfx.y = y+5
     gfx.drawstr(val)--draw V_Slider Value
@@ -260,9 +281,13 @@ function Slider:draw()
     local x,y,w,h  = self.x,self.y,self.w,self.h
     local r,g,b,a  = self.r,self.g,self.b,self.a
     local fnt,fnt_sz = self.fnt, self.fnt_sz
-    -- Get L_mouse state --
-          -- in element --
-          if self:mouseIN() then a=a+0.1 end
+    -- Get mouse state --
+          -- in element(and get mouswheel) --
+          if self:mouseIN() then a=a+0.1
+             if self:set_norm_val_m_wheel() then 
+                if self.onMove then self.onMove() end 
+             end  
+          end
           -- in elm L_down --
           if self:mouseDown() then a=a+0.2 
              self:set_norm_val()
@@ -367,6 +392,7 @@ function mainloop()
     -------------------------
     last_mouse_cap = gfx.mouse_cap
     last_x, last_y = gfx.mouse_x, gfx.mouse_y
+    gfx.mouse_wheel = 0 -- reset gfx.mouse_wheel 
     char = gfx.getchar()
     if char==32 then reaper.Main_OnCommand(40044, 0) end -- play 
     if char~=-1 then reaper.defer(mainloop) end          -- defer
