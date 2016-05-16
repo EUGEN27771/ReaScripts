@@ -76,17 +76,20 @@ local Knob = {}
 local Slider = {}
 local Rng_Slider = {}
 local Frame = {}
+local CheckBox = {}
   extended(Button,     Element)
   extended(Knob,       Element)
   extended(Slider,     Element)
   extended(Rng_Slider, Element)
   extended(Frame,      Element)
+  extended(CheckBox,   Element)
 --- Create Slider Child Classes(V_Slider,H_Slider) ----
 local H_Slider = {}
 local V_Slider = {}
   extended(H_Slider, Slider)
   extended(V_Slider, Slider)
 
+--------------------------------------------------------------------------------  
 --------------------------------------------------------------------------------
 ---   Button Class Methods   ---------------------------------------------------
 --------------------------------------------------------------------------------
@@ -121,6 +124,69 @@ function Button:draw()
     gfx.setfont(1, fnt, fnt_sz) -- set label fnt
     self:draw_lbl()             -- draw lbl
 end
+
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+---   CheckBox Class Methods   -------------------------------------------------
+--------------------------------------------------------------------------------
+function CheckBox:set_norm_val()
+    local x,y,w,h  = self.x,self.y,self.w,self.h
+    local val = self.norm_val      -- current value,check
+    local menu_tb = self.norm_val2 -- checkbox table
+    local menu_str = ""
+       for i=1, #menu_tb,1 do
+         if i~=val then menu_str = menu_str..menu_tb[i].."|"
+                   else menu_str = menu_str.."!"..menu_tb[i].."|" -- add check
+         end
+       end
+    gfx.x = self.x; gfx.y = self.y + self.h
+    local new_val = gfx.showmenu(menu_str)        -- show checkbox menu
+    if new_val>0 then self.norm_val = new_val end -- change check(!)
+end
+--------
+function CheckBox:draw_body()
+    gfx.rect(self.x,self.y,self.w,self.h, true) -- draw checkbox body
+end
+--------
+function CheckBox:draw_lbl()
+    local x,y,w,h  = self.x,self.y,self.w,self.h
+    local lbl_w, lbl_h = gfx.measurestr(self.lbl)
+    gfx.x = x-lbl_w-5; gfx.y = y+(h-lbl_h)/2
+    gfx.drawstr(self.lbl) -- draw checkbox label
+end
+--------
+function CheckBox:draw_val()
+    local x,y,w,h  = self.x,self.y,self.w,self.h
+    local val = self.norm_val2[self.norm_val]
+    local val_w, val_h = gfx.measurestr(val)
+    gfx.x = x+5; gfx.y = y+(h-val_h)/2
+    gfx.drawstr(val) -- draw checkbox val
+end
+------------------------
+function CheckBox:draw()
+    self:update_xywh() -- Update xywh(if wind changed)
+    local r,g,b,a  = self.r,self.g,self.b,self.a
+    local fnt,fnt_sz = self.fnt, self.fnt_sz
+    -- Get mouse state ---------
+          -- in element --------
+          if self:mouseIN() then a=a+0.1 end
+          -- in elm L_down -----
+          if self:mouseDown() then a=a+0.2 end
+          -- in elm L_up(released and was previously pressed) --
+          if self:mouseClick() then self:set_norm_val()
+             if self:mouseClick() and self.onClick then self.onClick() end
+          end
+    -- Draw ch_box body, frame -
+    gfx.set(r,g,b,a)    -- set body color
+    self:draw_body()    -- body
+    self:draw_frame()   -- frame
+    -- Draw label --------------
+    gfx.set(0.7, 0.9, 0.4, 1)   -- set label,val color
+    gfx.setfont(1, fnt, fnt_sz) -- set label,val fnt
+    self:draw_lbl()             -- draw lbl
+    self:draw_val()             -- draw val
+end
+
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 ---   Knob Class Methods   -----------------------------------------------------   
@@ -213,6 +279,7 @@ function Knob:draw()
     --self:draw_lbl()   -- draw lbl(if need)
     self:draw_val()     -- draw value
 end
+
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 ---   Slider Class Methods   ---------------------------------------------------
@@ -311,6 +378,7 @@ function Slider:draw()
     self:draw_val()   -- draw value
 end
 
+--------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 ---   Rng_Slider Class Methods   -----------------------------------------------
 --------------------------------------------------------------------------------
@@ -461,9 +529,16 @@ end
 ----------------------------------------------------------------------------------------------------
 ---   Objects(for Example Only)   ------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------
-local btn1 = Button:new(20,20,50,50, 0.5,0.3,0.4,0.3, "Btn1","Arial",15, 0 )
-local btn2 = Button:new(80,20,50,50, 0.6,0.4,0.1,0.3, "Btn2","Arial",15, 0 )
+local btn1 = Button:new(20,20,50,30, 0.5,0.3,0.4,0.3, "Btn1","Arial",15, 0 )
+local btn2 = Button:new(80,20,50,30, 0.6,0.4,0.1,0.3, "Btn2","Arial",15, 0 )
 local Button_TB = {btn1,btn2}
+-----
+    -- x,y,w,h, r,g,b,a, lbl,fnt,fnt_sz, norm_val = check, norm_val2 = checkbox table --
+local ch_box1 = CheckBox:new(120,320,120,20,  0.6,0.6,0.6,0.3, "Chan :","Arial",15,  1,
+                              {"1/2","3/4","5/6","7/8","9/10","etc"} )
+local ch_box2 = CheckBox:new(120,350,120,20,  0.6,0.6,0.6,0.3, "Mode :","Arial",15,  1,
+                              {"EQ","Gate","Compressor","Convolve","Subtract","etc"} )
+local CheckBox_TB = {ch_box1,ch_box2}
 -----
 local knb1 = Knob:new(20,80,50,50,   0.7,0.3,0.3,0.3, "K1","Arial",14, 0.5 )
 local knb2 = Knob:new(80,80,50,50,   0.3,0.7,0.3,0.3, "K2","Arial",14, 0.5 )
@@ -471,24 +546,25 @@ local knb3 = Knob:new(20,140,50,50,  0.7,0.7,0.3,0.3, "K3","Arial",14, 0.5 )
 local knb4 = Knob:new(80,140,50,50,  0.3,0.7,0.7,0.3, "K4","Arial",14, 0.5 )
 local Knob_TB = {knb1,knb2,knb3,knb4}
 -----
-local sldr1 = H_Slider:new(20,220,200,20, 0.7,0.3,0.3,0.3, "Sldr1","Arial",15, 0.5 )
-local sldr2 = V_Slider:new(150,20,30,180, 0.3,0.5,0.7,0.3, "Sldr2","Arial",15, 0.5 )
-local sldr3 = V_Slider:new(190,20,30,180, 0.3,0.5,0.7,0.3, "Sldr2","Arial",15, 0.5 )
-local rng_sldr1 = Rng_Slider:new(20,250, 200,20, 0.5,0.3,0.2,0.3, "Sldr1","Arial",15, 0.2,0.8 )
-local rng_sldr2 = Rng_Slider:new(20,280, 200,20, 0.5,0.4,0.3,0.3, "Sldr2","Arial",15, 0.2,0.8 )
+local sldr1 = H_Slider:new(20,220,220,20, 0.7,0.3,0.3,0.3, "Sldr1","Arial",15, 0.5 )
+local sldr2 = V_Slider:new(150,20,40,180, 0.3,0.5,0.7,0.3, "Sldr2","Arial",15, 0.5 )
+local sldr3 = V_Slider:new(200,20,40,180, 0.3,0.5,0.7,0.3, "Sldr3","Arial",15, 0.5 )
+local rng_sldr1 = Rng_Slider:new(20,250, 220,20, 0.5,0.3,0.2,0.3, "Sldr4","Arial",15, 0.2,0.8 )
+local rng_sldr2 = Rng_Slider:new(20,280, 220,20, 0.5,0.4,0.3,0.3, "Sldr5","Arial",15, 0.2,0.8 )
 local Slider_TB = {sldr1,sldr2,sldr3,rng_sldr1,rng_sldr2}
 -----
-local W_Frame = Frame:new(10,10,280,330,  0,0.5,0,0.4 )
+local W_Frame = Frame:new(10,10,280,380,  0,0.5,0,0.4 )
 local Frame_TB = {W_Frame}
 
 ----------------------------------------------------------------------------------------------------
 ---   Main DRAW function   -------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------
 function DRAW()
-    for key,btn   in pairs(Button_TB) do btn:draw()   end 
-    for key,knb   in pairs(Knob_TB)   do knb:draw()   end 
-    for key,sldr  in pairs(Slider_TB) do sldr:draw()  end
-    for key,frame in pairs(Frame_TB)  do frame:draw() end 
+    for key,btn     in pairs(Button_TB)   do btn:draw()    end
+    for key,ch_box  in pairs(CheckBox_TB) do ch_box:draw() end 
+    for key,knb     in pairs(Knob_TB)     do knb:draw()    end 
+    for key,sldr    in pairs(Slider_TB)   do sldr:draw()   end
+    for key,frame   in pairs(Frame_TB)    do frame:draw()  end 
 end
 
 --------------------------------------------------------------------------------
@@ -500,7 +576,7 @@ function Init()
     local Wnd_bgd = R + G*256 + B*65536  -- red+green*256+blue*65536  
     local Wnd_Title = "TEST"
     local Wnd_Dock,Wnd_X,Wnd_Y = 0,100,320
-    Wnd_W,Wnd_H = 300,350 -- global values(used for define zoom level)
+    Wnd_W,Wnd_H = 300,400 -- global values(used for define zoom level)
     -- Init window ------
     gfx.clear = Wnd_bgd         
     gfx.init( Wnd_Title, Wnd_W,Wnd_H, Wnd_Dock, Wnd_X,Wnd_Y )
