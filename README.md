@@ -1,4 +1,4 @@
-# Reaper-Scripts
+# ReaScripts
 ReaScripts(eel, lua)
 
 
