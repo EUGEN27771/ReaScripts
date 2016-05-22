@@ -1,3 +1,13 @@
+--[[
+   * ReaScript Name: Explode multichannel Audio (Non-destructive)
+   * Lua script for Cockos REAPER
+   * Author: EUGEN27771
+   * Author URI: http://forum.cockos.com/member.php?u=50462
+   * Licence: GPL v3
+   * Version: 1.0
+  ]]
+
+
 ------------------------------------------------
 -- Non-destructive explode multichannel Audio --
 ------------------------------------------------
@@ -35,5 +45,5 @@ end
 -----------------------
 reaper.Undo_BeginBlock()
 non_destructive_explode()
-reaper.Undo_EndBlock("Non-destructive explode", -1)
+reaper.Undo_EndBlock("Explode multichannel Audio (Non-destructive)", -1)
 reaper.UpdateArrange()

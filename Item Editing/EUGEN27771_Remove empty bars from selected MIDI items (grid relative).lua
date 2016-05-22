@@ -1,25 +1,22 @@
+--[[
+   * ReaScript Name:Remove empty bars from selected MIDI items (grid relative)
+   * Lua script for Cockos REAPER
+   * Author: EUGEN27771
+   * Author URI: http://forum.cockos.com/member.php?u=50462
+   * Licence: GPL v3
+   * Version: 1.0
+  ]]
+
+
 function msg(m) reaper.ShowConsoleMsg(tostring(m.."\n")) end
 ----------------------------
 ----------------------------
----------
-function range_start_end(prev_range_end)
-    local range_start = prev_range_end
-    local range_start_QN = reaper.TimeMap_timeToQN(range_start)
-    local ret, Bar_Start_QN, Bar_End_QN = reaper.TimeMap_QNToMeasures(0, range_start_QN)
-    local range_end   = reaper.TimeMap_QNToTime(Bar_End_QN)
-    return range_start, range_end
-end
 ---------
 function Add_range_to_Split(range_start,range_end,note_start,note_end)
     if range_start<note_start  and range_end>note_start then return end --    | --|-
     if range_start<note_end    and range_end>note_end   then return end --   -|-- |
     if range_start<=note_start and range_end>=note_end  then return end --    | - |
     if range_start>=note_start and range_end<=note_end  then return end --   -|---|-
-  return true
-end
----------
-function Add_range_to_Split2(range_start,range_end,CC_pos)
-    if range_start<=CC_pos and range_end>CC_pos then return end -- | - |
   return true
 end
 ---------
@@ -35,11 +32,11 @@ function Remove_Empty_Bars(Item,Take)
     local Item_End   = Item_Start + reaper.GetMediaItemInfo_Value(Item, "D_LENGTH")
     local ret, notecnt, ccevtcnt, textsyxevtcnt = reaper.MIDI_CountEvts(Take)
     ----------------
-    local range_start, range_end = range_start_end(Item_Start)
+    local range_start = Item_Start
+    local range_end   = reaper.BR_GetNextGridDivision(Item_Start)
     local spl = 1   
     ----------------------------
     while range_start<Item_End do
-      ----------------
       local Split  
         -- Find notes in current range -----
         for i=1,notecnt do 
@@ -50,21 +47,12 @@ function Remove_Empty_Bars(Item,Take)
               Split = Add_range_to_Split(range_start,range_end,note_start,note_end) 
               if not Split then  break end   
         end
-      ----------------
-      local Split2
-        -- Find CC in current range -------
-        for i=1,ccevtcnt do
-            local ret, selected, muted, CC_ppqpos, msgTypeOut, msgchan, msg2, msg3 = reaper.MIDI_GetCC(Take, i-1)
-            local CC_pos = reaper.MIDI_GetProjTimeFromPPQPos(Take, CC_ppqpos)
-              -------
-              Split2 = Add_range_to_Split2(range_start,range_end,CC_pos)
-              if not Split2 then  break end
-        end 
       
       -- Add range to Split_Points table if notes not found --
-      if Split and Split2 then Split_Points[spl] = {range_start,range_end}; spl = spl+1 end
+      if Split then Split_Points[spl] = {range_start,range_end}; spl = spl+1 end
       -- To next range --
-      range_start, range_end = range_start_end(range_end)
+      range_start = range_end
+      range_end   = reaper.BR_GetNextGridDivision(range_start+0.01)
     end
     ----------------------------
     -- split empty -------------
@@ -82,7 +70,6 @@ local Sel_Items = {}
 local item_cnt = reaper.CountSelectedMediaItems(0)
 -- sel items to table ---------------------
 for i=1, item_cnt do Sel_Items[i] = reaper.GetSelectedMediaItem(0, i-1) end
------
 ----------------------------
 reaper.PreventUIRefresh(111)
 reaper.Undo_BeginBlock()
@@ -99,6 +86,5 @@ reaper.Undo_BeginBlock()
     end
     --------------------
   reaper.GetSet_LoopTimeRange(true, false, usel1, usel2, false)
-reaper.Undo_EndBlock("~Remove Empty Bars from selected MIDI-Items~", -1)    
+reaper.Undo_EndBlock("Remove empty bars from selected MIDI items (grid relative)", -1)    
 reaper.PreventUIRefresh(-111)
------

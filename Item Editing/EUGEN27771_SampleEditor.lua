@@ -1,3 +1,12 @@
+--[[
+   * ReaScript Name:SampleEditor
+   * Lua script for Cockos REAPER
+   * Author: EUGEN27771
+   * Author URI: http://forum.cockos.com/member.php?u=50462
+   * Licence: GPL v3
+   * Version: 1.0
+  ]]
+
 local Wave = {} -- Main table
 local Undo = {} -- For Undo data
 -------------------------

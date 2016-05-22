@@ -1,5 +1,14 @@
+/*
+   * ReaScript Name: Move selected item notes left within time selection (grid relative)
+   * EEL script for Cockos REAPER
+   * Author: EUGEN27771
+   * Author URI: http://forum.cockos.com/member.php?u=50462
+   * Licence: GPL v3
+   * Version: 1.0
+   */
+
 //Move Notes//
-Move_Notes = +1;//-1=Left;1=Right
+Move_Notes = -1;//-1=Left;1=Right
 VAR_FLAG = 0;// 1 for Notes Start-End in time Sel; 0 for Notes Start Only in time Sel
 function Move_Notes_One_Grid_Div()
 (Undo_BeginBlock();//Start Undo

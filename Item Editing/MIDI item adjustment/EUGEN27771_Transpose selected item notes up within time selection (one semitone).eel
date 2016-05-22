@@ -1,5 +1,14 @@
+/*
+   * ReaScript Name: EUGEN27771_Transpose selected item notes up within time selection (one semitone)
+   * EEL script for Cockos REAPER
+   * Author: EUGEN27771
+   * Author URI: http://forum.cockos.com/member.php?u=50462
+   * Licence: GPL v3
+   * Version: 1.0
+   */
+
 //Transpose notes//
-#Transpose = "1";//Set Transpose Range
+Transpose = +1;//Set Transpose Range
 VAR_FLAG = 0;// 1 for Notes Start-End in time Sel; 0 for Notes Start Only in time Sel
 function Transpose_Notes()
 (Undo_BeginBlock();//Start Undo
@@ -51,11 +60,7 @@ ActiveTake = GetActiveTake(MediaItem);//Get ActiveTake
              (Time_Sel_Start = Item_Start_Time;Time_Sel_End = Item_End_Time;
               GetSet_LoopTimeRange(1,0, Time_Sel_Start, Time_Sel_End,0););//Set New Time Sel
 //=======================================================================================================//
-TakeIsMIDI(ActiveTake) ? //If ActiveTake is MIDI 
-(GetUserInputs("Change Pitch", 1 , "Set Value", #Transpose) ?    //If UserInput "OK" then
-      (match("%i", #Transpose, Transpose);Transpose_Notes(););//Extract Velocity and Execuate Function          
- );
- 
+TakeIsMIDI(ActiveTake) ?  Transpose_Notes();//If ActiveTake is MIDI execute function
 UpdateArrange();     
 
 /*===Example for extension_api("FNG_GetMidiNoteIntProperty", FNG_Note_ID,prop)

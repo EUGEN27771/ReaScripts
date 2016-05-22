@@ -1,3 +1,14 @@
+/*
+   * ReaScript Name: Open media item (type relative)
+   * EEL script for Cockos REAPER
+   * Author: EUGEN27771
+   * Author URI: http://forum.cockos.com/member.php?u=50462
+   * Licence: GPL v3
+   * Version: 1.0
+   */
+
+
+
 // For MIDI  === Open MIDI-Item in MIDI-EDITOR with a FIXED VIEW(stable zoom in Project-Bars)
 // For AUDIO === Open AUDIO-Item(Simply Toggle MAX/Normal Zoom & IT CAN BE CHANGED IF NEED)
 

@@ -1,3 +1,12 @@
+--[[
+   * ReaScript Name: Stretch selected items positions and rate
+   * Lua script for Cockos REAPER
+   * Author: EUGEN27771
+   * Author URI: http://forum.cockos.com/member.php?u=50462
+   * Licence: GPL v3
+   * Version: 1.0
+  ]]
+
 -------------------------------------------------------------------------------------
 -- SynhroStretch Selected items(use shortcut for script and mouse cursor position) --
 -------------------------------------------------------------------------------------
@@ -35,4 +44,4 @@ end
 
 -- For NoUndo(no trash in undo history) --
 reaper.Undo_BeginBlock()
-reaper.Undo_EndBlock("SynhroStretch", 2)
+reaper.Undo_EndBlock("Stretch selected items positions and rate", 2)

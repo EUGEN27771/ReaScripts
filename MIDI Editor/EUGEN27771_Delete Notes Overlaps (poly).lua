@@ -1,3 +1,12 @@
+--[[
+   * ReaScript Name:Delete Notes Overlaps (poly)
+   * Lua script for Cockos REAPER
+   * Author: EUGEN27771
+   * Author URI: http://forum.cockos.com/member.php?u=50462
+   * Licence: GPL v3
+   * Version: 1.0
+  ]]
+
 -----------------------------------------------------------------
 -------- Delete Notes Overlaps(Poly) ----------------------------
 -----------------------------------------------------------------
@@ -67,6 +76,6 @@ InCh_Flag = 0      -- Save Overlaps Inside of a Chord var
 reaper.Undo_BeginBlock()
 local Take_ID, ME_Flag = Get_MIDI_Take()
 if Take_ID then Del_Overlaps(Take_ID, ME_Flag) end
-reaper.Undo_EndBlock("~Delete_Overlaps(Poly)~", -1)
+reaper.Undo_EndBlock("Delete Notes Overlaps (poly)", -1)
 reaper.UpdateArrange()
 

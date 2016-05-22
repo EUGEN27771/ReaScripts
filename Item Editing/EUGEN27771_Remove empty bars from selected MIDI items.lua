@@ -1,3 +1,13 @@
+--[[
+   * ReaScript Name:Remove empty bars from selected MIDI items
+   * Lua script for Cockos REAPER
+   * Author: EUGEN27771
+   * Author URI: http://forum.cockos.com/member.php?u=50462
+   * Licence: GPL v3
+   * Version: 1.0
+  ]]
+
+
 function msg(m) reaper.ShowConsoleMsg(tostring(m.."\n")) end
 ----------------------------
 ----------------------------
@@ -83,6 +93,6 @@ reaper.Undo_BeginBlock()
     end
     --------------------
   reaper.GetSet_LoopTimeRange(true, false, usel1, usel2, false)
-reaper.Undo_EndBlock("~Remove Empty Bars from selected MIDI-Items~", -1)    
+reaper.Undo_EndBlock("Remove empty bars from selected MIDI items", -1)    
 reaper.PreventUIRefresh(-111)
 -----

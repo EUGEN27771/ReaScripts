@@ -1,3 +1,12 @@
+/*
+   * ReaScript Name: Retrospective Record (MIDI)
+   * EEL script for Cockos REAPER
+   * Author: EUGEN27771
+   * Author URI: http://forum.cockos.com/member.php?u=50462
+   * Licence: GPL v3
+   * Version: 3.0
+   */
+
 //==v20151213==Reaper v5.1,SWS 2.8.2==//
 ////////////////////////////////////////////////////////////////////////////////////////////////
 //==================JS_RRMidi TEXT(Do not change this text!!!)================================//

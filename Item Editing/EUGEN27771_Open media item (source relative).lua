@@ -1,4 +1,14 @@
----------------------------------------------------------------------
+--[[
+   * ReaScript Name: Open media item (source relative)
+   * Lua script for Cockos REAPER
+   * Author: EUGEN27771
+   * Author URI: http://forum.cockos.com/member.php?u=50462
+   * Licence: GPL v3
+   * Version: 1.0
+  ]]
+  
+  
+  ---------------------------------------------------------------------
 -- Open Item(Var Actions depending of item source) ------------------
 ---------------------------------------------------------------------
 --[[
@@ -86,7 +96,7 @@ end
 function Run_Action()
   reaper.Undo_BeginBlock()
   reaper.Main_OnCommandEx(ID,0, 0)
-  reaper.Undo_EndBlock("Run_Action", -1)
+  reaper.Undo_EndBlock("Open media item (source relative)", -1)
 end
 
 ----------------------------------------

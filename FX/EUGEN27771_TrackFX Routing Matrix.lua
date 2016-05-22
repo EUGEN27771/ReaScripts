@@ -171,7 +171,7 @@ end
 Z = 15 --used as cell w,h(and for change zoom level etc)
 R = 1  --used for rewind FXs
 gfx.clear=1315860
-gfx.init( "TEST", 700,300 )
+gfx.init( "EUGEN27771 TrackFX Routing Matrix", 700,300 )
 gfx.setfont(1,"Calibri", Z)
 last_mouse_cap=0
 mouse_dx, mouse_dy =0,0
