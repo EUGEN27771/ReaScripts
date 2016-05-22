@@ -1,0 +1,54 @@
+/*
+   * ReaScript Name: Open media item (type relative)
+   * EEL script for Cockos REAPER
+   * Author: EUGEN27771
+   * Author URI: http://forum.cockos.com/member.php?u=50462
+   * Licence: GPL v3
+   * Version: 1.0
+   */
+
+
+
+// For MIDI  === Open MIDI-Item in MIDI-EDITOR with a FIXED VIEW(stable zoom in Project-Bars)
+// For AUDIO === Open AUDIO-Item(Simply Toggle MAX/Normal Zoom & IT CAN BE CHANGED IF NEED)
+
+// == Edit This Section For Set Zoom-Range, Start-View Point  etc == //
+Zoom_In_Bars  = 4;        // Set Zoom_In_Bars for Zoom_Rang(for example 1,2,4 etc)
+Add_Zoom_Out  = 0;        // Set Addenum Zoom_Out(ONLY IF NEED)(for example 0,1,2,3 etc)
+Start_Zoom_Flag = 1;      // Set FLAG(Start-View Point) : 0=Cursor_Pos OR 1=Meas_Start(BAR start)
+Audio_Action_ID = 41622;  // IT CAN BE CHANGED IF NEED, paste another ID From Action List(DefID=Toggle Zoom to Sel items)
+
+// ================================================================= //   
+PreventUIRefresh(1);
+   Undo_BeginBlock();     // Start Undo(TOTAL FOR MIDI-Item & AUDIO-Items)
+function Open_MIDI_and_Zoom()
+(  
+GetSet_LoopTimeRange(0,0,User_T_Sel_Start,User_T_Sel_End,0);         // Get-Save User Time Sel
+Cursor_Pos_QN = TimeMap_timeToQN(GetCursorPosition());               // Get Cursor Pos(in Project QN)
+TimeMap_QNToMeasures(0, Cursor_Pos_QN , Bar_Start_QN , Bar_End_QN ); // Get BAR Start-End in QN
+One_Bar_QN = Bar_End_QN - Bar_Start_QN;                              // Calculate QN in Current Bar
+Zoom_Range_QN = Zoom_In_Bars*One_Bar_QN;                             // Calculate Zoom_Range in QN(see Zoom_In_Bars) 
+Start_Zoom_Flag ? Start_Zoom_QN = Bar_Start_QN : Start_Zoom_QN = Cursor_Pos_QN; // Set Start_Zoom Point(see Flag)
+End_Zoom_QN = Start_Zoom_QN + Zoom_Range_QN;                                    // Calculate End_Zoom Point
+Start_Zoom = TimeMap_QNToTime(Start_Zoom_QN);  // Start_Zoom_QN to Time
+End_Zoom   = TimeMap_QNToTime(End_Zoom_QN);    // End_Zoom_QN to Time
+
+GetSet_LoopTimeRange(1,0, Start_Zoom , End_Zoom , 0);   // Set Time Sel For Zoom
+Main_OnCommand(40153, 0);                               // 40153 = open selected MIDI-Item in MIDI editor
+ME = MIDIEditor_GetActive();                            // Get Active MIDI-EDITOR
+MIDIEditor_OnCommand(ME, 40726);                        // Zoom to Zoom_Rang_Sel
+loop(Add_Zoom_Out,MIDIEditor_OnCommand(ME, 1011););     // Zoom Out Horiz if Need(see Add_Zoom_Out)
+
+GetSet_LoopTimeRange(1,0,User_T_Sel_Start,User_T_Sel_End,0); // Restore User Time Sel
+   Undo_EndBlock("Open MIDI-Item + Zoom", -1);               // End Undo(Local-FOR MIDI ONLY)
+); 
+
+// ================================================================= // 
+MediaItem = GetSelectedMediaItem(0, 0);          // Get 1-st selected media item
+ActiveTake = GetActiveTake(MediaItem);           // Get Active Take
+TakeIsMIDI(ActiveTake) ?                         // IF Take is MIDI,then exec Open_MIDI_and_Zoom(),else run Audio_Action
+            Open_MIDI_and_Zoom() :
+            (Main_OnCommand(Audio_Action_ID, 0);              // Action for AUDIO-Items(see Audio_Action_ID)
+             Undo_EndBlock("Open Audio-Item + Zoom", -1);     // End Undo(Local-FOR Audio ONLY) 
+             );
+PreventUIRefresh(-1);
