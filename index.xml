@@ -3,113 +3,113 @@
   <category name="FX">
     <reapack name="EUGEN27771_TrackFX Routing Matrix.lua" type="script">
       <version name="1.0" author="EUGEN27771" time="2016-05-20T11:41:48Z">
-        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/52ee8c75727f8b38a500f1c16519ff0ff5243b3e/FX/EUGEN27771_TrackFX%20Routing%20Matrix.lua</source>
+        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/c7a2f6ab00a17f08c4660968f0eb8e898d9aa784/FX/EUGEN27771_TrackFX%20Routing%20Matrix.lua</source>
       </version>
     </reapack>
   </category>
   <category name="Item Editing">
     <reapack name="EUGEN27771_Explode multichannel Audio (Non-destructive).lua" type="script">
       <version name="1.0" author="EUGEN27771" time="2016-05-22T09:35:30Z">
-        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/a2f18b992a24d668ecc07ae61caf848f9e4d5826/Item%20Editing/EUGEN27771_Explode%20multichannel%20Audio%20(Non-destructive).lua</source>
+        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/c7a2f6ab00a17f08c4660968f0eb8e898d9aa784/Item%20Editing/EUGEN27771_Explode%20multichannel%20Audio%20(Non-destructive).lua</source>
       </version>
     </reapack>
     <reapack name="EUGEN27771_Open media item (source relative).lua" type="script">
       <version name="1.0" author="EUGEN27771" time="2016-05-22T09:35:30Z">
-        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/a2f18b992a24d668ecc07ae61caf848f9e4d5826/Item%20Editing/EUGEN27771_Open%20media%20item%20(source%20relative).lua</source>
+        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/c7a2f6ab00a17f08c4660968f0eb8e898d9aa784/Item%20Editing/EUGEN27771_Open%20media%20item%20(source%20relative).lua</source>
       </version>
     </reapack>
     <reapack name="EUGEN27771_Open media item (type relative).eel" type="script">
       <version name="1.0" author="EUGEN27771" time="2016-05-22T09:35:30Z">
-        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/a2f18b992a24d668ecc07ae61caf848f9e4d5826/Item%20Editing/EUGEN27771_Open%20media%20item%20(type%20relative).eel</source>
+        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/c7a2f6ab00a17f08c4660968f0eb8e898d9aa784/Item%20Editing/EUGEN27771_Open%20media%20item%20(type%20relative).eel</source>
       </version>
     </reapack>
     <reapack name="EUGEN27771_Remove empty bars from selected MIDI items (grid relative).lua" type="script">
       <version name="1.0" author="EUGEN27771" time="2016-05-22T09:35:30Z">
-        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/a2f18b992a24d668ecc07ae61caf848f9e4d5826/Item%20Editing/EUGEN27771_Remove%20empty%20bars%20from%20selected%20MIDI%20items%20(grid%20relative).lua</source>
+        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/c7a2f6ab00a17f08c4660968f0eb8e898d9aa784/Item%20Editing/EUGEN27771_Remove%20empty%20bars%20from%20selected%20MIDI%20items%20(grid%20relative).lua</source>
       </version>
     </reapack>
     <reapack name="EUGEN27771_Remove empty bars from selected MIDI items (regard CC).lua" type="script">
       <version name="1.0" author="EUGEN27771" time="2016-05-22T09:35:30Z">
-        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/a2f18b992a24d668ecc07ae61caf848f9e4d5826/Item%20Editing/EUGEN27771_Remove%20empty%20bars%20from%20selected%20MIDI%20items%20(regard%20CC).lua</source>
+        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/c7a2f6ab00a17f08c4660968f0eb8e898d9aa784/Item%20Editing/EUGEN27771_Remove%20empty%20bars%20from%20selected%20MIDI%20items%20(regard%20CC).lua</source>
       </version>
     </reapack>
     <reapack name="EUGEN27771_Remove empty bars from selected MIDI items (regard CC, grid relative).lua" type="script">
       <version name="1.0" author="EUGEN27771" time="2016-05-22T09:35:30Z">
-        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/a2f18b992a24d668ecc07ae61caf848f9e4d5826/Item%20Editing/EUGEN27771_Remove%20empty%20bars%20from%20selected%20MIDI%20items%20(regard%20CC,%20grid%20relative).lua</source>
+        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/c7a2f6ab00a17f08c4660968f0eb8e898d9aa784/Item%20Editing/EUGEN27771_Remove%20empty%20bars%20from%20selected%20MIDI%20items%20(regard%20CC,%20grid%20relative).lua</source>
       </version>
     </reapack>
     <reapack name="EUGEN27771_Remove empty bars from selected MIDI items.lua" type="script">
       <version name="1.0" author="EUGEN27771" time="2016-05-22T09:35:30Z">
-        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/a2f18b992a24d668ecc07ae61caf848f9e4d5826/Item%20Editing/EUGEN27771_Remove%20empty%20bars%20from%20selected%20MIDI%20items.lua</source>
+        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/c7a2f6ab00a17f08c4660968f0eb8e898d9aa784/Item%20Editing/EUGEN27771_Remove%20empty%20bars%20from%20selected%20MIDI%20items.lua</source>
       </version>
     </reapack>
     <reapack name="EUGEN27771_SampleEditor.lua" type="script">
       <version name="1.0" author="EUGEN27771" time="2016-05-22T09:35:30Z">
-        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/a2f18b992a24d668ecc07ae61caf848f9e4d5826/Item%20Editing/EUGEN27771_SampleEditor.lua</source>
+        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/c7a2f6ab00a17f08c4660968f0eb8e898d9aa784/Item%20Editing/EUGEN27771_SampleEditor.lua</source>
       </version>
     </reapack>
     <reapack name="EUGEN27771_Stretch selected items positions and rate.lua" type="script">
       <version name="1.0" author="EUGEN27771" time="2016-05-22T09:35:30Z">
-        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/a2f18b992a24d668ecc07ae61caf848f9e4d5826/Item%20Editing/EUGEN27771_Stretch%20selected%20items%20positions%20and%20rate.lua</source>
+        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/c7a2f6ab00a17f08c4660968f0eb8e898d9aa784/Item%20Editing/EUGEN27771_Stretch%20selected%20items%20positions%20and%20rate.lua</source>
       </version>
     </reapack>
     <reapack name="EUGEN27771_Vox-Deess Enveloper.lua" type="script">
       <version name="1.0" author="EUGEN27771" time="2016-05-22T09:35:30Z">
-        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/a2f18b992a24d668ecc07ae61caf848f9e4d5826/Item%20Editing/EUGEN27771_Vox-Deess%20Enveloper.lua</source>
+        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/c7a2f6ab00a17f08c4660968f0eb8e898d9aa784/Item%20Editing/EUGEN27771_Vox-Deess%20Enveloper.lua</source>
       </version>
     </reapack>
   </category>
   <category name="Item Editing/MIDI item adjustment">
     <reapack name="EUGEN27771_Adjust +10 velocity of selected item notes within time selection.eel" type="script">
       <version name="1.0" author="EUGEN27771" time="2016-05-22T09:35:30Z">
-        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/a2f18b992a24d668ecc07ae61caf848f9e4d5826/Item%20Editing/MIDI%20item%20adjustment/EUGEN27771_Adjust%20+10%20velocity%20of%20selected%20item%20notes%20within%20time%20selection.eel</source>
+        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/c7a2f6ab00a17f08c4660968f0eb8e898d9aa784/Item%20Editing/MIDI%20item%20adjustment/EUGEN27771_Adjust%20+10%20velocity%20of%20selected%20item%20notes%20within%20time%20selection.eel</source>
       </version>
     </reapack>
     <reapack name="EUGEN27771_Adjust -10 velocity of selected item notes within time selection.eel" type="script">
       <version name="1.0" author="EUGEN27771" time="2016-05-22T09:35:30Z">
-        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/a2f18b992a24d668ecc07ae61caf848f9e4d5826/Item%20Editing/MIDI%20item%20adjustment/EUGEN27771_Adjust%20-10%20velocity%20of%20selected%20item%20notes%20within%20time%20selection.eel</source>
+        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/c7a2f6ab00a17f08c4660968f0eb8e898d9aa784/Item%20Editing/MIDI%20item%20adjustment/EUGEN27771_Adjust%20-10%20velocity%20of%20selected%20item%20notes%20within%20time%20selection.eel</source>
       </version>
     </reapack>
     <reapack name="EUGEN27771_Adjust parameters of selected item notes.eel" type="script">
       <version name="1.0" author="EUGEN27771" time="2016-05-22T09:35:30Z">
-        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/a2f18b992a24d668ecc07ae61caf848f9e4d5826/Item%20Editing/MIDI%20item%20adjustment/EUGEN27771_Adjust%20parameters%20of%20selected%20item%20notes.eel</source>
+        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/c7a2f6ab00a17f08c4660968f0eb8e898d9aa784/Item%20Editing/MIDI%20item%20adjustment/EUGEN27771_Adjust%20parameters%20of%20selected%20item%20notes.eel</source>
       </version>
     </reapack>
     <reapack name="EUGEN27771_Adjust velocity of selected item notes within time selection.eel" type="script">
       <version name="1.0" author="EUGEN27771" time="2016-05-22T09:35:30Z">
-        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/a2f18b992a24d668ecc07ae61caf848f9e4d5826/Item%20Editing/MIDI%20item%20adjustment/EUGEN27771_Adjust%20velocity%20of%20selected%20item%20notes%20within%20time%20selection.eel</source>
+        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/c7a2f6ab00a17f08c4660968f0eb8e898d9aa784/Item%20Editing/MIDI%20item%20adjustment/EUGEN27771_Adjust%20velocity%20of%20selected%20item%20notes%20within%20time%20selection.eel</source>
       </version>
     </reapack>
     <reapack name="EUGEN27771_Move selected item notes left within time selection (grid relative).eel" type="script">
       <version name="1.0" author="EUGEN27771" time="2016-05-22T09:35:30Z">
-        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/a2f18b992a24d668ecc07ae61caf848f9e4d5826/Item%20Editing/MIDI%20item%20adjustment/EUGEN27771_Move%20selected%20item%20notes%20left%20within%20time%20selection%20(grid%20relative).eel</source>
+        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/c7a2f6ab00a17f08c4660968f0eb8e898d9aa784/Item%20Editing/MIDI%20item%20adjustment/EUGEN27771_Move%20selected%20item%20notes%20left%20within%20time%20selection%20(grid%20relative).eel</source>
       </version>
     </reapack>
     <reapack name="EUGEN27771_Move selected item notes right within time selection (grid relative).eel" type="script">
       <version name="1.0" author="EUGEN27771" time="2016-05-22T09:35:30Z">
-        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/a2f18b992a24d668ecc07ae61caf848f9e4d5826/Item%20Editing/MIDI%20item%20adjustment/EUGEN27771_Move%20selected%20item%20notes%20right%20within%20time%20selection%20(grid%20relative).eel</source>
+        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/c7a2f6ab00a17f08c4660968f0eb8e898d9aa784/Item%20Editing/MIDI%20item%20adjustment/EUGEN27771_Move%20selected%20item%20notes%20right%20within%20time%20selection%20(grid%20relative).eel</source>
       </version>
     </reapack>
     <reapack name="EUGEN27771_Transpose selected item notes down within time selection (one semitone).eel" type="script">
       <version name="1.0" author="EUGEN27771" time="2016-05-22T09:35:30Z">
-        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/a2f18b992a24d668ecc07ae61caf848f9e4d5826/Item%20Editing/MIDI%20item%20adjustment/EUGEN27771_Transpose%20selected%20item%20notes%20down%20within%20time%20selection%20(one%20semitone).eel</source>
+        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/c7a2f6ab00a17f08c4660968f0eb8e898d9aa784/Item%20Editing/MIDI%20item%20adjustment/EUGEN27771_Transpose%20selected%20item%20notes%20down%20within%20time%20selection%20(one%20semitone).eel</source>
       </version>
     </reapack>
     <reapack name="EUGEN27771_Transpose selected item notes up within time selection (one semitone).eel" type="script">
       <version name="1.0" author="EUGEN27771" time="2016-05-22T09:35:30Z">
-        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/a2f18b992a24d668ecc07ae61caf848f9e4d5826/Item%20Editing/MIDI%20item%20adjustment/EUGEN27771_Transpose%20selected%20item%20notes%20up%20within%20time%20selection%20(one%20semitone).eel</source>
+        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/c7a2f6ab00a17f08c4660968f0eb8e898d9aa784/Item%20Editing/MIDI%20item%20adjustment/EUGEN27771_Transpose%20selected%20item%20notes%20up%20within%20time%20selection%20(one%20semitone).eel</source>
       </version>
     </reapack>
     <reapack name="EUGEN27771_Transpose selected item notes within time selection with prompt.eel" type="script">
       <version name="1.0" author="EUGEN27771" time="2016-05-22T09:35:30Z">
-        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/a2f18b992a24d668ecc07ae61caf848f9e4d5826/Item%20Editing/MIDI%20item%20adjustment/EUGEN27771_Transpose%20selected%20item%20notes%20within%20time%20selection%20with%20prompt.eel</source>
+        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/c7a2f6ab00a17f08c4660968f0eb8e898d9aa784/Item%20Editing/MIDI%20item%20adjustment/EUGEN27771_Transpose%20selected%20item%20notes%20within%20time%20selection%20with%20prompt.eel</source>
       </version>
     </reapack>
   </category>
   <category name="MIDI Editor">
     <reapack name="EUGEN27771_Delete Notes Overlaps (poly).lua" type="script">
       <version name="1.0" author="EUGEN27771" time="2016-05-22T09:35:30Z">
-        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/a2f18b992a24d668ecc07ae61caf848f9e4d5826/MIDI%20Editor/EUGEN27771_Delete%20Notes%20Overlaps%20(poly).lua</source>
+        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/c7a2f6ab00a17f08c4660968f0eb8e898d9aa784/MIDI%20Editor/EUGEN27771_Delete%20Notes%20Overlaps%20(poly).lua</source>
       </version>
     </reapack>
   </category>
@@ -123,24 +123,24 @@
   <category name="Tracks Properties">
     <reapack name="EUGEN27771_Select next first level track.lua" type="script">
       <version name="1.0" author="EUGEN27771" time="2016-05-22T09:35:30Z">
-        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/a2f18b992a24d668ecc07ae61caf848f9e4d5826/Tracks%20Properties/EUGEN27771_Select%20next%20first%20level%20track.lua</source>
+        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/c7a2f6ab00a17f08c4660968f0eb8e898d9aa784/Tracks%20Properties/EUGEN27771_Select%20next%20first%20level%20track.lua</source>
       </version>
     </reapack>
     <reapack name="EUGEN27771_Select previous first level track.lua" type="script">
       <version name="1.0" author="EUGEN27771" time="2016-05-22T09:35:30Z">
-        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/a2f18b992a24d668ecc07ae61caf848f9e4d5826/Tracks%20Properties/EUGEN27771_Select%20previous%20first%20level%20track.lua</source>
+        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/c7a2f6ab00a17f08c4660968f0eb8e898d9aa784/Tracks%20Properties/EUGEN27771_Select%20previous%20first%20level%20track.lua</source>
       </version>
     </reapack>
   </category>
   <category name="Various">
     <reapack name="EUGEN27771_Retrospective Record (audio).eel" type="script">
       <version name="3.0" author="EUGEN27771" time="2016-05-22T09:35:30Z">
-        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/a2f18b992a24d668ecc07ae61caf848f9e4d5826/Various/EUGEN27771_Retrospective%20Record%20(audio).eel</source>
+        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/c7a2f6ab00a17f08c4660968f0eb8e898d9aa784/Various/EUGEN27771_Retrospective%20Record%20(audio).eel</source>
       </version>
     </reapack>
     <reapack name="EUGEN27771_Retrospective Record (MIDI).eel" type="script">
       <version name="3.0" author="EUGEN27771" time="2016-05-22T09:35:30Z">
-        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/a2f18b992a24d668ecc07ae61caf848f9e4d5826/Various/EUGEN27771_Retrospective%20Record%20(MIDI).eel</source>
+        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/c7a2f6ab00a17f08c4660968f0eb8e898d9aa784/Various/EUGEN27771_Retrospective%20Record%20(MIDI).eel</source>
       </version>
     </reapack>
   </category>
