@@ -27,6 +27,7 @@ function Wave:Get_Source()
         ]] 
       ------------------------------------------------------------------
       if Source_type~="WAVE" then return  false, "Invalide Type - "..Source_type end
+      if reaper.GetMediaSourceLength(Source)> 10*60 then return  false, "Source length must be less than 10 minutes!" end
       ------------------------------------------------------------------
       -- Read data from wav file ---------------------------------------
       ------------------------------------------------------------------
