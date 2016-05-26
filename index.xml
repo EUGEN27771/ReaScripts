@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="EUGEN27771-ReaScripts" commit="752f303ad7ef61042b81ec509531b11770285158">
+<index version="1" name="EUGEN27771-ReaScripts" commit="a41002bea509ab55c47cc63923cd8c4c4658e0f8">
   <category name="FX">
     <reapack name="gen_TrackFX Routing Matrix.lua" type="script">
       <version name="1.0" author="EUGEN27771" time="2016-05-24T09:53:00Z">
@@ -46,6 +46,9 @@
     <reapack name="gen_SampleEditor.lua" type="script">
       <version name="1.0" author="EUGEN27771" time="2016-05-24T09:54:47Z">
         <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/86232fd6bc43530e683c66f77e5dfa33ee2fea14/Item%20Editing/gen_SampleEditor.lua</source>
+      </version>
+      <version name="1.01" author="EUGEN27771" time="2016-05-26T09:53:08Z">
+        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/a41002bea509ab55c47cc63923cd8c4c4658e0f8/Item%20Editing/gen_SampleEditor.lua</source>
       </version>
     </reapack>
     <reapack name="gen_Stretch selected items positions and rate.lua" type="script">
