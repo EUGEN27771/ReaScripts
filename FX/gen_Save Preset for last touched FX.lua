@@ -1,10 +1,10 @@
 --[[
-   * ReaScript Name: Save Preset for last touched VST
+   * ReaScript Name: Save_FX_Preset
    * Lua script for Cockos REAPER
    * Author: EUGEN27771
    * Author URI: http://forum.cockos.com/member.php?u=50462
    * Licence: GPL v3
-   * Version: 1.01
+   * Version: 1.02
   ]]
 
 --------------------------------------------------------------------------------
@@ -48,49 +48,63 @@ function B64_to_HEX(data)
 end
 
 ----------------------------------------
--- Name to Hex  ------------------------
+-- String_to_HEX  ----------------------
 ----------------------------------------
-function Name_to_Hex(Preset_Name)
+function String_to_HEX(Preset_Name)
   local VAL  = {Preset_Name:byte(1,-1)} -- to bytes, values
   local Pfmt = string.rep("%02X", #VAL)
-  local HEX  = string.format(Pfmt, table.unpack(VAL))
-  return "00"..HEX.."0010000000"        -- it may be not valid ?
+  return string.format(Pfmt, table.unpack(VAL))
 end
 
 --------------------------------------------------------------------------------
 -- FX_Chunk_to_HEX -------------------------------------------------------------
 --------------------------------------------------------------------------------
 -- Variant 1 ---------------------------
-function FX_Chunk_to_HEX(FX_Chunk, Preset_Name)
-  local Preset_Chunk = FX_Chunk:match("\n.*\n")     -- extract preset(simple var)
-  local Hex_TB = {}
-  local init = 1
-  ---------------------
-  for i=1, math.huge do 
-        line = Preset_Chunk:match("\n.-\n", init)   -- extract line from preset(simple var)
-        if not line then
-           --reaper.ShowConsoleMsg(Hex_TB[i-1].."\n")
-           Hex_TB[i-1] = Name_to_Hex(Preset_Name)   -- Name_to_Hex(replace name-line from chunk)
-           --reaper.ShowConsoleMsg(Hex_TB[i-1].."\n")
-           break 
-        end
-        ---------------
-        init = init + #line - 1                    -- for next line
-        line = line:gsub("\n","")                  -- del "\n"
-        --reaper.ShowConsoleMsg(line.."\n")
-        Hex_TB[i] = B64_to_HEX(line)
-  end
-  ---------------------
-  return table.concat(Hex_TB)
+function FX_Chunk_to_HEX(FX_Type, FX_Chunk, Preset_Name)
+  local Preset_Chunk = FX_Chunk:match("\n.*\n")        -- extract preset(simple var)
+  
+    ---------------------------------------
+    -- For JS -----------------------------
+    ---------------------------------------
+    if FX_Type=="JS" then
+       Preset_Chunk = Preset_Chunk:gsub("\n", "")      -- del "\n"
+       --reaper.ShowConsoleMsg(Preset_Chunk..'\n')
+       return String_to_HEX(Preset_Chunk..Preset_Name)
+    end
+    
+    ---------------------------------------
+    -- For VST ----------------------------
+    ---------------------------------------
+    local Hex_TB = {}
+    local init = 1
+    ---------------------
+    for i=1, math.huge do 
+          line = Preset_Chunk:match("\n.-\n", init)    -- extract line from preset(simple var)
+          if not line then
+             --reaper.ShowConsoleMsg(Hex_TB[i-1].."\n")
+             Hex_TB[i-1] = "00"..String_to_HEX(Preset_Name).."0010000000" -- Preset_Name to Hex(replace name from chunk)
+             --reaper.ShowConsoleMsg(Hex_TB[i-1].."\n")
+             break 
+          end
+          ---------------
+          init = init + #line - 1                      -- for next line
+          line = line:gsub("\n","")                    -- del "\n"
+          --reaper.ShowConsoleMsg(line.."\n")
+          Hex_TB[i] = B64_to_HEX(line)
+    end
+    ---------------------
+    return table.concat(Hex_TB)
 end
 
--- Variant 2(without Name to Hex) ------
+-- Variant 2(without Name to Hex, simple var) ------
 --[[
-function FX_Chunk_to_HEX(FX_Chunk, Preset_Name)
+function FX_Chunk_to_HEX(FX_Type, FX_Chunk, Preset_Name)
   local Preset_Chunk = FX_Chunk:match("\n.*\n")   -- extract preset(simple var)
   ----------------------------------------
   Preset_Chunk = Preset_Chunk:gsub("\n","")       -- del "\n"
-  return B64_to_HEX(Preset_Chunk)
+  if FX_Type=="JS" then return String_to_HEX(Preset_Chunk..Preset_Name)
+     else return B64_to_HEX(Preset_Chunk)
+  end
 end
 --]]
 
@@ -117,7 +131,7 @@ function Write_to_File(PresetFile, Preset_HEX, Preset_Name)
         ret_r, Nprsts =  reaper.BR_Win32_GetPrivateProfileString("General", "NbPresets", "", PresetFile)
         Nprsts = math.tointeger(Nprsts)
         ------------------
-        ret_w = reaper.BR_Win32_WritePrivateProfileString("General", "NbPresets", math.tointeger(Nprsts)+1, PresetFile)
+        ret_w = reaper.BR_Win32_WritePrivateProfileString("General", "NbPresets", math.tointeger(Nprsts+1), PresetFile)
     else Nprsts = 0
          Presets_ini = "[General]\nNbPresets="..Nprsts+1
          file = io.open(PresetFile, "w")
@@ -156,24 +170,25 @@ end
 --------------------------------------------------------------------------------
 function Get_FX_Data(track, fxnum)
   local fx_cnt = reaper.TrackFX_GetCount(track)
-  if fx_cnt==0 or fxnum>fx_cnt-1 then return end          -- if fxnum not valid
+  if fx_cnt==0 or fxnum>fx_cnt-1 then return end       -- if fxnum not valid
   local ret, Track_Chunk =  reaper.GetTrackStateChunk(track,"",false)
   --reaper.ShowConsoleMsg(Track_Chunk)
   
   ------------------------------------
   -- Find FX_Chunk(use fxnum) --------
   ------------------------------------
-  local s, e = Track_Chunk:find("<FXCHAIN")             -- find FXCHAIN section
+  local s, e = Track_Chunk:find("<FXCHAIN")            -- find FXCHAIN section
   -- find VST(or JS) chunk 
   for i=1, fxnum+1 do
       s, e = Track_Chunk:find("%b<>", e)                    
   end
     ----------------------------------
-    -- if FX(fxnum) type ~= "VST" ----
-    if Track_Chunk:sub(s+1, s+3)~="VST" then return end   -- Only VST supported
+    -- FX_Type -----------------------
+    local FX_Type = string.match(Track_Chunk:sub(s+1,s+3), "%u+")   -- FX Type
+    if not(FX_Type=="VST" or FX_Type=="JS") then return end         -- Only VST and JS supported
     ----------------------------------
     -- extract FX_Chunk -------------- 
-    local FX_Chunk = Track_Chunk:match("%b<>", s)         -- FX_Chunk(simple var)
+    local FX_Chunk = Track_Chunk:match("%b<>", s)      -- FX_Chunk(simple var)
     ----------------------------------
     --reaper.ShowConsoleMsg(FX_Chunk.."\n")
   
@@ -182,25 +197,24 @@ function Get_FX_Data(track, fxnum)
   ------------------------------------
   local PresetFile = reaper.TrackFX_GetUserPresetFilename(track, fxnum, "")
   ------------------------------------
-  return FX_Chunk, PresetFile
+  return FX_Type, FX_Chunk, PresetFile
 end
 
 --------------------------------------------------------------------------------
 -- Main function  --------------------------------------------------------------
 --------------------------------------------------------------------------------
 function Save_VST_Preset(track, fxnum, Preset_Name)
-  if not (track and fxnum and Preset_Name) then return end   --  Need track, fxnum, Preset_Name
-  local FX_Chunk, PresetFile = Get_FX_Data(track, fxnum)
+  if not (track and fxnum and Preset_Name) then return end       -- Need track, fxnum, Preset_Name
+  local FX_Type, FX_Chunk, PresetFile = Get_FX_Data(track, fxnum)
+  --reaper.ShowConsoleMsg(FX_Chunk..'\n')
   -----------
   if FX_Chunk and PresetFile then
      local start_time = reaper.time_precise() 
-     local Preset_HEX = FX_Chunk_to_HEX(FX_Chunk, Preset_Name)
+     local Preset_HEX = FX_Chunk_to_HEX(FX_Type, FX_Chunk, Preset_Name)
      --reaper.ShowConsoleMsg("Processing time = ".. reaper.time_precise()-start_time ..'\n') -- time test
-     ------
      local start_time = reaper.time_precise()
      Write_to_File(PresetFile, Preset_HEX, Preset_Name)
      --reaper.ShowConsoleMsg("Write time = ".. reaper.time_precise()-start_time ..'\n') -- time test
-     ------
      reaper.TrackFX_SetPreset(track, fxnum, Preset_Name) -- For "update", but this is optional
   end
 end    
@@ -209,18 +223,18 @@ end
 -- GetLastTouchedFX  -------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------
 function Get_LastTouch_FX()
-  local retval, tracknum, fxnum = reaper.GetLastTouchedFX()            -- fxnum  
+  local retval, tracknum, fxnum = reaper.GetLastTouchedFX()           -- fxnum  
   if not retval then return end                       
-  local track = reaper.GetTrack(0, tracknum-1)                         -- track(trackID)
+  local track = reaper.GetTrack(0, tracknum-1)                        -- track(trackID)
   local Pidx, Npt = reaper.TrackFX_GetPresetIndex(track, fxnum)
-  if Pidx==-1   then return end 
-  local  Preset_Name = "New "..Npt+1                                   -- New Preset_Name
+  local  Preset_Name = "New "..Npt+1                                  -- New Preset_Name
   return track, fxnum, Preset_Name
 end
 
 ----------------------------------------------------------------------------------------------------
 -- Start  ------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------
-local track, fxnum, Preset_Name = Get_LastTouch_FX()                   -- any function can be used
-Save_VST_Preset(track, fxnum, Preset_Name)                             -- RUN
+local track, fxnum, Preset_Name = Get_LastTouch_FX()                  -- any function can be used
+Save_VST_Preset(track, fxnum, Preset_Name)                            -- RUN
                 
+
