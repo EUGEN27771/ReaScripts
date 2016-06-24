@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="EUGEN27771-ReaScripts" commit="026b88534639cb0bdcad075de9c73b70405f035b">
+<index version="1" name="EUGEN27771-ReaScripts" commit="fc949fec5c3bdab50ec975e682e166124904a7b2">
   <category name="FX">
     <reapack name="gen_Save Preset for last touched VST.lua" type="script">
       <version name="1.01" author="EUGEN27771" time="2016-06-24T13:07:37Z">
@@ -141,11 +141,6 @@
     </reapack>
   </category>
   <category name="Various">
-    <reapack name="gen_ WAVE Generator.lua" type="script">
-      <version name="1.01" author="EUGEN27771" time="2016-06-24T13:05:36Z">
-        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/5b03562a660a3e625b867b82d22cfba90ee3fb3c/Various/gen_%20WAVE%20Generator.lua</source>
-      </version>
-    </reapack>
     <reapack name="gen_Retrospective Record (audio).eel" type="script">
       <version name="3.0" author="EUGEN27771" time="2016-05-24T10:01:05Z">
         <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/752f303ad7ef61042b81ec509531b11770285158/Various/gen_Retrospective%20Record%20(audio).eel</source>
@@ -154,6 +149,11 @@
     <reapack name="gen_Retrospective Record (MIDI).eel" type="script">
       <version name="3.0" author="EUGEN27771" time="2016-05-24T10:00:46Z">
         <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/e88f3fe43e8401480d43562974138208caa7ac4a/Various/gen_Retrospective%20Record%20(MIDI).eel</source>
+      </version>
+    </reapack>
+    <reapack name="gen_WAVE Generator.lua" type="script">
+      <version name="1.02" author="EUGEN27771" time="2016-06-24T13:20:19Z">
+        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/fc949fec5c3bdab50ec975e682e166124904a7b2/Various/gen_WAVE%20Generator.lua</source>
       </version>
     </reapack>
   </category>
