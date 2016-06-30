@@ -4,7 +4,7 @@
    * Author: EUGEN27771
    * Author URI: http://forum.cockos.com/member.php?u=50462
    * Licence: GPL v3
-   * Version: 1.01
+   * Version: 1.02
   ]]
 
 local Wave = {} -- Main table
@@ -97,7 +97,7 @@ function Wave:Get_Source()
       sel_start_in_item =  math.max( sel_start - Item_start , 0 )
       sel_end_in_item   =  math.min( sel_end   - Item_start , Item_len )
         -- if selection out of item ! ----
-        if sel_start_in_item>=Item_len or sel_end_in_item<=0 then return "Selection out of Item!" end
+        if sel_start_in_item>=Item_len or sel_end_in_item<=0 then return "Time Selection out of Selected Item!" end
       ------------------------------------
       -- Time Sel to Source time ---------
       local offset,playrate, source_len,lenIsQN, sel_start_in_source,sel_end_in_source 
@@ -107,7 +107,7 @@ function Wave:Get_Source()
       sel_start_in_source = math.max( sel_start_in_item * playrate + offset , 0 )
       sel_end_in_source   = math.min( sel_end_in_item   * playrate + offset , source_len )
         -- if selection out of source ! --
-        if sel_start_in_source>=source_len or sel_end_in_source<=0 then return "Selection out of Source!" end
+        if sel_start_in_source>=source_len or sel_end_in_source<=0 then return "Time Selection out of Item Source!" end
         -- Limit Selection to 100ms(deliberate limitation) !!! --
         if sel_end_in_source - sel_start_in_source > 0.1 then sel_end_in_source = sel_start_in_source + 0.1 end
       ---------------------------------------------------------------------------
@@ -345,7 +345,7 @@ function Init()
     -- Some gfx Wnd Default Values ---------------
     local R,G,B = 20,20,20              -- 0...255 format
     local Wnd_bgd = R + G*256 + B*65536 -- red+green*256+blue*65536  
-    local Wnd_Title = "Sample Editor 1.01"
+    local Wnd_Title = "Sample Editor 1.02"
     local Wnd_Dock,Wnd_X,Wnd_Y = 0,100,320 
     Wnd_W,Wnd_H = 1044,490 -- global values(used for define zoom level)
     -- Init window ------
@@ -381,10 +381,12 @@ function mainloop()
     if Proj_Change() then 
        W = Wave:Get_Source() 
     end
-    --------------------------
-    -- DRAW,MAIN functions ---
-    --------------------------
+    --------------------------------
+    -- DRAW,MAIN functions ---------
+    --------------------------------
     if W==true then
+       -----------------------------
+       -- Draw, editing ------------
        local Wh = gfx.h/Wave.nchans
        local r,g,b,a = 0.7,0.5,0.6,1
        for chan=1, Wave.nchans do
@@ -393,16 +395,19 @@ function mainloop()
            Wave:Draw_Samples(chan, 0,  Wh*(chan-1),  gfx.w, Wh, r,g,b,a) -- chan, Wx,Wy,Ww,Wh 
            r,g = g,r -- reverse r,g  
        end
-    else gfx.setfont(1,"Arial", 25); gfx.set(0.8,0.7,0.5,1); gfx.x=20; gfx.y=20; gfx.drawstr(W)
+          --------------------------
+          --- On release Mouse L ---
+          if gfx.mouse_cap&1==0 and last_mouse_cap&1==1 then
+             Create_Undo_Point() -- Create Undo Point 
+             Wave:Rewrite_File() -- Apply Changes to file
+          end
+      --------------------------
+      -- Else show info --------
+      else gfx.setfont(1,"Arial", 25); gfx.set(0.8,0.7,0.5,1); gfx.x=20; gfx.y=20; gfx.drawstr(W)
     end
-    --------------------------
-    --- Mouse L - Edit -------
-    if gfx.mouse_cap&1==0 and last_mouse_cap&1==1 then
-       Create_Undo_Point() -- Create Undo Point 
-       Wave:Rewrite_File() -- Apply Changes to file
-    end
-    --------------------------
-    --- Mouse R - Undo -------
+    
+    --------------------------------
+    --- On release Mouse R - Undo --
     if gfx.mouse_cap&2==0 and last_mouse_cap&2==2 then 
        Apply_UNDO()        -- Undo 
     end
