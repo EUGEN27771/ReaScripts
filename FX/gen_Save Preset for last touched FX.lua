@@ -4,7 +4,7 @@
    * Author: EUGEN27771
    * Author URI: http://forum.cockos.com/member.php?u=50462
    * Licence: GPL v3
-   * Version: 1.02
+   * Version: 1.03
   ]]
 
 --------------------------------------------------------------------------------
@@ -180,7 +180,7 @@ function Get_FX_Data(track, fxnum)
   local s, e = Track_Chunk:find("<FXCHAIN")            -- find FXCHAIN section
   -- find VST(or JS) chunk 
   for i=1, fxnum+1 do
-      s, e = Track_Chunk:find("%b<>", e)                    
+      s, e = Track_Chunk:find("<%u+%s.->", e)                    
   end
     ----------------------------------
     -- FX_Type -----------------------
@@ -190,8 +190,8 @@ function Get_FX_Data(track, fxnum)
     -- extract FX_Chunk -------------- 
     local FX_Chunk = Track_Chunk:match("%b<>", s)      -- FX_Chunk(simple var)
     ----------------------------------
-    --reaper.ShowConsoleMsg(FX_Chunk.."\n")
-  
+    --reaper.ShowConsoleMsg("\n\n"..fxnum.."\n"..FX_Chunk.."\n")
+    
   ------------------------------------
   -- Get UserPresetFile --------------
   ------------------------------------
@@ -237,4 +237,3 @@ end
 local track, fxnum, Preset_Name = Get_LastTouch_FX()                  -- any function can be used
 Save_VST_Preset(track, fxnum, Preset_Name)                            -- RUN
                 
-
