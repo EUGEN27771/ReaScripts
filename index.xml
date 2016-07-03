@@ -1,9 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="EUGEN27771-ReaScripts" commit="e12f68bac8e72cb27c0562cedb5466783f5bfe32">
+<index version="1" name="EUGEN27771-ReaScripts" commit="40ba1f02dfd5ba9de4636d3407d1d0d3c43a4f40">
   <category name="FX">
     <reapack name="gen_Save Preset for last touched FX.lua" type="script">
       <version name="1.02" author="EUGEN27771" time="2016-06-24T22:51:03Z">
         <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/2ea1aadc3d5d036c34860cbe61e45ba6bbbbbf6c/FX/gen_Save%20Preset%20for%20last%20touched%20FX.lua</source>
+      </version>
+      <version name="1.03" author="EUGEN27771" time="2016-07-03T13:45:30Z">
+        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/40ba1f02dfd5ba9de4636d3407d1d0d3c43a4f40/FX/gen_Save%20Preset%20for%20last%20touched%20FX.lua</source>
       </version>
     </reapack>
     <reapack name="gen_TrackFX Routing Matrix.lua" type="script">
