@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="EUGEN27771-ReaScripts" commit="40ba1f02dfd5ba9de4636d3407d1d0d3c43a4f40">
+<index version="1" name="EUGEN27771-ReaScripts" commit="2bf782c3347364094542952bcb73f43269b1f914">
   <category name="FX">
     <reapack name="gen_Save Preset for last touched FX.lua" type="script">
       <version name="1.02" author="EUGEN27771" time="2016-06-24T22:51:03Z">
@@ -131,6 +131,13 @@
     <reapack name="gen_Simple GUI template for scripts.lua" type="script">
       <version name="1.0" author="EUGEN27771" time="2016-05-24T09:59:39Z">
         <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/272bb620a7e967d804b75704cd5f7e9b49348f97/Templates/GUI/gen_Simple%20GUI%20template%20for%20scripts.lua</source>
+      </version>
+    </reapack>
+  </category>
+  <category name="Track Editing">
+    <reapack name="gen_Freeze selected tracks(only instruments).lua" type="script">
+      <version name="1.0" author="EUGEN27771" time="2016-08-21T19:26:18Z">
+        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/2bf782c3347364094542952bcb73f43269b1f914/Track%20Editing/gen_Freeze%20selected%20tracks(only%20instruments).lua</source>
       </version>
     </reapack>
   </category>
