@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="EUGEN27771-ReaScripts" commit="2bf782c3347364094542952bcb73f43269b1f914">
+<index version="1" name="EUGEN27771-ReaScripts" commit="6b0e7cc3fe379b28a27795df852374875511736b">
   <category name="FX">
     <reapack name="gen_Save Preset for last touched FX.lua" type="script">
       <version name="1.02" author="EUGEN27771" time="2016-06-24T22:51:03Z">
@@ -154,6 +154,16 @@
     </reapack>
   </category>
   <category name="Various">
+    <reapack name="gen_Align Items by transients.lua" type="script">
+      <version name="1.0" author="EUGEN27771" time="2016-09-05T07:56:20Z">
+        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/6b0e7cc3fe379b28a27795df852374875511736b/Various/gen_Align%20Items%20by%20transients.lua</source>
+      </version>
+    </reapack>
+    <reapack name="gen_Drum trigger.lua" type="script">
+      <version name="1.01" author="EUGEN27771" time="2016-09-05T07:56:20Z">
+        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/6b0e7cc3fe379b28a27795df852374875511736b/Various/gen_Drum%20trigger.lua</source>
+      </version>
+    </reapack>
     <reapack name="gen_Retrospective Record (audio).eel" type="script">
       <version name="3.0" author="EUGEN27771" time="2016-05-24T10:01:05Z">
         <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/752f303ad7ef61042b81ec509531b11770285158/Various/gen_Retrospective%20Record%20(audio).eel</source>
