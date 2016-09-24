@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="EUGEN27771-ReaScripts" commit="6b0e7cc3fe379b28a27795df852374875511736b">
+<index version="1" name="EUGEN27771-ReaScripts" commit="68416880106a6fa8a597452a773b362f2b2edf39">
   <category name="FX">
     <reapack name="gen_Save Preset for last touched FX.lua" type="script">
       <version name="1.02" author="EUGEN27771" time="2016-06-24T22:51:03Z">
@@ -49,6 +49,16 @@
     <reapack name="gen_Remove empty bars from selected MIDI items.lua" type="script">
       <version name="1.0" author="EUGEN27771" time="2016-05-24T09:55:05Z">
         <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/da65f0c0c3464c480c3e9f3bc7bea6248b8749d8/Item%20Editing/gen_Remove%20empty%20bars%20from%20selected%20MIDI%20items.lua</source>
+      </version>
+    </reapack>
+    <reapack name="gen_Render selected item as new take, up to last VSTi.lua" type="script">
+      <version name="1.0" author="EUGEN27771" time="2016-09-24T22:36:29Z">
+        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/b153705f430686dea02af827499b588f4a89379a/Item%20Editing/gen_Render%20selected%20item%20as%20new%20take,%20up%20to%20last%20VSTi.lua</source>
+      </version>
+    </reapack>
+    <reapack name="gen_Render selected item on new track, up to last VSTi.lua" type="script">
+      <version name="1.0" author="EUGEN27771" time="2016-09-24T22:36:29Z">
+        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/b153705f430686dea02af827499b588f4a89379a/Item%20Editing/gen_Render%20selected%20item%20on%20new%20track,%20up%20to%20last%20VSTi.lua</source>
       </version>
     </reapack>
     <reapack name="gen_SampleEditor.lua" type="script">
@@ -158,10 +168,21 @@
       <version name="1.0" author="EUGEN27771" time="2016-09-05T07:56:20Z">
         <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/6b0e7cc3fe379b28a27795df852374875511736b/Various/gen_Align%20Items%20by%20transients.lua</source>
       </version>
+      <version name="1.01" author="EUGEN27771" time="2016-09-24T22:37:56Z">
+        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/95583bd800689e59a0777415d6e77980ec6dc0c9/Various/gen_Align%20Items%20by%20transients.lua</source>
+      </version>
+    </reapack>
+    <reapack name="gen_Create stretch-markers at transients.eel" type="script">
+      <version name="1.01" author="EUGEN27771" time="2016-09-24T22:30:48Z">
+        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/590d8b4ed46c6b7d9c535640774d276bc4bb38ce/Various/gen_Create%20stretch-markers%20at%20transients.eel</source>
+      </version>
     </reapack>
     <reapack name="gen_Drum trigger.lua" type="script">
       <version name="1.01" author="EUGEN27771" time="2016-09-05T07:56:20Z">
         <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/6b0e7cc3fe379b28a27795df852374875511736b/Various/gen_Drum%20trigger.lua</source>
+      </version>
+      <version name="1.02" author="EUGEN27771" time="2016-09-24T22:38:40Z">
+        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/68416880106a6fa8a597452a773b362f2b2edf39/Various/gen_Drum%20trigger.lua</source>
       </version>
     </reapack>
     <reapack name="gen_Retrospective Record (audio).eel" type="script">
