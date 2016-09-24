@@ -1,5 +1,5 @@
 --[[
-   * ReaScript Name:Drums to MIDI(test version)
+   * ReaScript Name:Drums to MIDI(beta version)
    * Lua script for Cockos REAPER
    * Author: EUGEN27771
    * Author URI: http://forum.cockos.com/member.php?u=50462
@@ -594,11 +594,16 @@ function Frame:draw()
 end
 
 
+
+----------------------------------------------------------------------------------------------------
+--************************************************************************************************--
+----------------------------------------------------------------------------------------------------
+
 ----------------------------------------------------------------------------------------------------
 --   Some Default Values   -------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------
 local srate   = 44100 -- дефолтный семплрейт(не реальный, но здесь не имеет значения)
-local n_chans = 2     -- кол-во каналов(трековых), don't change it!
+--local n_chans = 1     -- кол-во каналов(трековых), don't change it!
 local block_size = 1024*16 -- размер блока(для фильтра и тп) , don't change it!
 local time_limit = 3*60    -- limit maximum time, change, if need.
 local defPPQ = 960         -- change, if need.
@@ -645,7 +650,7 @@ end
 LP_Freq.draw_val = HP_Freq.draw_val -- Same as the previous(HP_Freq:draw_val())
 
 -- Filter Gain -----------------------------------
-local Fltr_Gain = H_Slider:new(80,450,160,18,  0.3,0.5,0.5,0.3, "Out Gain","Arial",15, 0 )
+local Fltr_Gain = H_Slider:new(20,450,220,18,  0.3,0.5,0.5,0.3, "Out Gain","Arial",15, 0 )
 function Fltr_Gain:draw_val()
   self.form_val = self.norm_val*24  -- form value
   local x,y,w,h  = self.x,self.y,self.w,self.h
@@ -707,9 +712,9 @@ function Gate_Thresh:draw_val_line()
     gfx.line(Wave.x, val_line2, Wave.x+Wave.w-1, val_line2 )
   end
 end
--- Sensetive -------------------------------------
-local Gate_Sensetive = H_Slider:new(270,400,290,18, 0.3,0.5,0.7,0.3, "Sensetive","Arial",15, 0.2 )
-function Gate_Sensetive:draw_val()
+-- Sensitivity -------------------------------------
+local Gate_Sensitivity = H_Slider:new(270,400,290,18, 0.3,0.5,0.7,0.3, "Sensitivity","Arial",15, 0.2 )
+function Gate_Sensitivity:draw_val()
   self.form_val = 2+(self.norm_val)*15       -- form_val
   local x,y,w,h  = self.x,self.y,self.w,self.h
   local val = string.format("%.1f", self.form_val).." dB"
@@ -762,7 +767,7 @@ function Gate_Sldrs_onUp()
 end
 ----------------
 Gate_Thresh.onUp    = Gate_Sldrs_onUp
-Gate_Sensetive.onUp = Gate_Sldrs_onUp
+Gate_Sensitivity.onUp = Gate_Sldrs_onUp
 Gate_Retrig.onUp    = Gate_Sldrs_onUp
 Gate_DetVelo.onUp   = Gate_Sldrs_onUp
 
@@ -796,7 +801,7 @@ end--]]
 --- Slider_TB --------------------------
 ----------------------------------------
 local Slider_TB = {HP_Freq,LP_Freq,Fltr_Gain, 
-                   Gate_Thresh,Gate_Sensetive,Gate_Retrig,Gate_DetVelo,Gate_ReducePoints, 
+                   Gate_Thresh,Gate_Sensitivity,Gate_Retrig,Gate_DetVelo,Gate_ReducePoints, 
                    Gate_VeloScale}
 
 -------------------------------------------------------------------------------------
@@ -880,15 +885,12 @@ ViewMode.onClick =
 function() 
    if Wave.State then Wave:Redraw() end 
 end
---------------------------------------------------
--- Other Checkboxes ------------------------------
-local AUChanMode = CheckBox:new(20,450,58,18,  0.3,0.5,0.5,0.3, "","Arial",15,  1,
-                              {"Input 1", "Input 2"} )
-AUChanMode.onClick = Get_Sel_Button.onClick
+
+
 -----------------------------------
 --- CheckBox_TB -------------------
 -----------------------------------
-local CheckBox_TB = {CreateMIDIMode,OutNote,NoteChannel,NoteLenghth,VeloMode, DrawMode, ViewMode, AUChanMode}
+local CheckBox_TB = {CreateMIDIMode,OutNote,NoteChannel,NoteLenghth,VeloMode, DrawMode, ViewMode}
 
 ---[[ Перенести наверх!!!----------------------
 Gate_VeloScale.onUp = 
@@ -922,10 +924,11 @@ function Gate_Gl:Apply_toFiltered()
       -------------------------------------------------
       -- GetSet parameters ----------------------------
       -------------------------------------------------
-      -- Threshold, Sensetive ----------
+      -- Threshold, Sensitivity ----------
       local gain_fltr  = 10^(Fltr_Gain.form_val/20)      -- Gain from Fltr_Gain slider(need for scaling gate Thresh!)
-      local Thresh     = 10^(Gate_Thresh.form_val/20)/gain_fltr * block_size  -- Threshold regard fft scale and gain_fltr
-      local Sensetive  = 10^(Gate_Sensetive.form_val/20) -- Gate "Sensetive", diff between - fast and slow envelopes(in dB)
+      local Thresh     = 10^(Gate_Thresh.form_val/20)/gain_fltr -- Threshold regard gain_fltr
+            Thresh     = Thresh / (0.5/ block_size)      -- Threshold regard fft_real scale and gain_fltr
+      local Sensitivity  = 10^(Gate_Sensitivity.form_val/20) -- Gate "Sensitivity", diff between - fast and slow envelopes(in dB)
       -- Attack, Release Time -----------
       -- Эти параметры нужно либо выносить в доп. настройки, либо подбирать тщательнее...
       local attTime1  = 0.001                            -- Env1 attack(sec)
@@ -936,7 +939,7 @@ function Gate_Gl:Apply_toFiltered()
       -- Init counters etc --------------
       ----------------------------------- 
       local retrig_smpls   = floor(Gate_Retrig.form_val/1000*srate)  -- Retrig slider to samples
-      local retrig         = retrig_smpls+1                               -- Retrig counter start value!
+      local retrig         = retrig_smpls+1                          -- Retrig counter start value!
       local det_velo_smpls = floor(Gate_DetVelo.form_val/1000*srate) -- DetVelo slider to samples 
       -----------------------------------
       local rms_sum, peak_smpl  = 0, 0       -- init rms_sum,   maxRMS
@@ -975,10 +978,10 @@ function Gate_Gl:Apply_toFiltered()
            --------------------------------------------
            -- Trigger ---------------------------------  
            if retrig>retrig_smpls then
-              if envOut1>Thresh and (envOut1/envOut2) > Sensetive then
+              if envOut1>Thresh and (envOut1/envOut2) > Sensitivity then
                  Trig = true; smpl_cnt = 0; retrig = 0; rms_sum, peak_smpl = 0, 0 -- set start-values(for capture velo)
               end
-            else envOut2 = envOut1 -- уравнивает огибающие,пока триггер неактивен(здесь важно)
+            else envOut2 = envOut1; retrig = retrig+1 -- урав. огибающие,пока триггер неактивен
            end
            -------------------------------------------------------------
            -- Get samples(for velocity) --------------------------------
@@ -1007,7 +1010,6 @@ function Gate_Gl:Apply_toFiltered()
               end
            end       
            ----------------------------------     
-           retrig = retrig+1
        end
     -----------------------------
     if minRMS == maxRMS then minRMS = 0 end -- если только одна точка
@@ -1286,7 +1288,7 @@ function Wave:Create_Track_Accessor()
          self.AA_Hash  = reaper.GetAudioAccessorHash(self.AA, "")
          self.AA_start = reaper.GetAudioAccessorStartTime(self.AA)
          self.AA_end   = reaper.GetAudioAccessorEndTime(self.AA)
-         self.buffer   = reaper.new_array(block_size*2)-- L,R main block-buffer
+         self.buffer   = reaper.new_array(block_size)-- main block-buffer
          self.buffer.clear()
          return true
     end
@@ -1323,17 +1325,16 @@ end
 function Wave:Filter_FFT(lowband, hiband)
   local buf = self.buffer
     ----------------------------------------
-    -- Filter(re = Lchan, im = Rchan ) -----
+    -- Filter(use fft_real) ----------------
     ----------------------------------------
-    buf.fft(block_size,true)       -- FFT
+    buf.fft_real(block_size,true)       -- FFT
       -----------------------------
       -- Clear lowband bins --
-      buf.clear(0, 1, lowband)                       -- clear start part
-      buf.clear(0,  block_size*2 - lowband + 1 )     -- clear end part
+      buf.clear(0, 1, lowband)                  -- clear low bins
       -- Clear hiband bins  --
-      buf.clear(0, hiband+1, (block_size-hiband)*2 ) -- clear mid part
+      buf.clear(0, hiband+1, block_size-hiband) -- clear hi bins
       -----------------------------  
-    buf.ifft(block_size,true)      -- iFFT
+    buf.ifft_real(block_size,true)      -- iFFT
     ----------------------------------------
 end  
 
@@ -1372,17 +1373,18 @@ function Wave:draw_waveform(mode, r,g,b,a)
     if mode==2 then Peak_TB = self.out_peaks;
        -- Its not real Gain - но это обязательно учитывать в дальнейшем, экономит время...
        local fltr_gain = 10^(Fltr_Gain.form_val/20)               -- from Fltr_Gain Sldr!
-       Ysc = self.Y_scale/block_size * fltr_gain * self.vertZoom  -- Y_scale for filtered waveform drawing 
+       Ysc = self.Y_scale*(0.5/block_size) * fltr_gain * self.vertZoom  -- Y_scale for filtered waveform drawing 
     end   
     ----------------------------
     ----------------------------
     local w = self.def_xywh[3] -- 1024 = def width
     local Zfact = self.max_Zoom/self.Zoom  -- zoom factor
     local Ppos = self.Pos*self.max_Zoom    -- старт. позиция в "мелкой"-Peak_TB для начала прорисовки  
-    local curr = ceil(Ppos+1)
+    local curr = ceil(Ppos+1)              -- округление
     local n_Peaks = w*self.max_Zoom        -- Макс. доступное кол-во пиков
     gfx.set(r,g,b,a)                       -- set color
-    -- уточнить ----------------
+    -- уточнить, нужно сделать исправление для неориг. размера окна --
+    -- next выходит за w*max_Zoom, а должен - макс. w*max_Zoom(51200) при max_Zoom=50 --
     for i=1, w do            
        local next = min( i*Zfact + Ppos, n_Peaks ) -- грубоватое исправление...
        local min_peak, max_peak, peak = 0, 0, 0 
@@ -1392,7 +1394,7 @@ function Wave:draw_waveform(mode, r,g,b,a)
               peak = Peak_TB[p][2]
               max_peak = max(max_peak, peak)
           end
-        curr = ceil(next) 
+        curr = ceil(next)
         local y, y2 = Y - min_peak *Ysc, Y - max_peak *Ysc 
         gfx.line(i,y, i,y2) -- здесь всегда x=i
     end  
@@ -1434,22 +1436,14 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 -- WAVE - (Get samples(in_buf) > filtering > to out-buf > Create in, out peaks ) ---------------------------------------
 ------------------------------------------------------------------------------------------------------------------------
-function Wave:table_move(tmp_buf)
-  local j = AUChanMode.norm_val
-  for i = 1, #tmp_buf/2, 1 do  
-      tmp_buf[i] = tmp_buf[j]
-      j=j+2
-  end
-  return tmp_buf
-end
 -------
 function Wave:table_plus(mode, size, tmp_buf)
   local buf
   if mode==1 then buf=self.in_buf else buf=self.out_buf end
-  local j = AUChanMode.norm_val
-  for i = size+1, size + #tmp_buf/2, 1 do  
+  local j = 1
+  for i = size+1, size + #tmp_buf, 1 do  
       buf[i] = tmp_buf[j]
-      j=j+2 
+      j=j+1 
   end
 end
 --------------------------------------------------------------------------------
@@ -1480,17 +1474,17 @@ function Wave:Set_Values()
     ---------------------------------
     -- Some other values ------------
     self.crsx   = block_size/8   -- one side "crossX"  -- use for discard some FFT artefacts(its non-nat, but in this case normally)
-    self.Xblock = block_size-self.crsx*2               -- active part of full block
+    self.Xblock = block_size-self.crsx*2               -- active part of full block(use mid-part of each block)
     -----------
-    local max_size = 2^22 - 1 -- Макс. доступно(при создании из таблицы можно больше, но...)
-    local div_fact = self.Xblock*n_chans -- Размеры полн. и ост. буфера здесь всегда должны быть кратны Xblock*n_chans --
-    self.full_buf_sz  = (max_size//div_fact)*div_fact   -- размер полного буфера с учетом кратности div_fact(Xblock*n_chans)
-    self.n_Full_Bufs  = (self.selSamples*n_chans)//self.full_buf_sz -- кол-во полных буферов в выделении
-    self.n_XBlocks_FB = self.full_buf_sz/div_fact                   -- кол-во X-блоков в полном буфере(с учетом каналов!)
+    local max_size = 2^22 - 1    -- Макс. доступно(при создании из таблицы можно больше, но...)
+    local div_fact = self.Xblock -- Размеры полн. и ост. буфера здесь всегда должны быть кратны Xblock --
+    self.full_buf_sz  = (max_size//div_fact)*div_fact     -- размер полного буфера с учетом кратности div_fact
+    self.n_Full_Bufs  = self.selSamples//self.full_buf_sz -- кол-во полных буферов в выделении
+    self.n_XBlocks_FB = self.full_buf_sz/div_fact         -- кол-во X-блоков в полном буфере
     -----------
-    local rest_smpls  = self.selSamples*n_chans - self.n_Full_Bufs*self.full_buf_sz -- остаток семплов
-    self.rest_buf_sz  = ceil(rest_smpls/div_fact) * div_fact   -- размер остаточного(окр. вверх для захв. полн. участка)
-    self.n_XBlocks_RB = self. rest_buf_sz/div_fact             -- кол-во X-блоков в остаточном буфере(с учетом каналов!) 
+    local rest_smpls  = self.selSamples - self.n_Full_Bufs*self.full_buf_sz -- остаток семплов
+    self.rest_buf_sz  = ceil(rest_smpls/div_fact) * div_fact  -- размер остаточного(окр. вверх для захв. полн. участка)
+    self.n_XBlocks_RB = self.rest_buf_sz/div_fact             -- кол-во X-блоков в остаточном буфере 
   -------------
   return true
 end
@@ -1522,11 +1516,11 @@ function Wave:Processing()
         for i=1,  self.n_Full_Bufs+1 do 
             if i>self.n_Full_Bufs then size = self.rest_buf_sz else size = self.full_buf_sz end  
             local tmp_buf = reaper.new_array(size)
-            reaper.GetAudioAccessorSamples(self.AA, srate,n_chans, buf_start, size/n_chans, tmp_buf) -- orig samples to in_buf for drawing
+            reaper.GetAudioAccessorSamples(self.AA, srate, 1, buf_start, size, tmp_buf) -- orig samples to in_buf for drawing
             --------
-            if i==1 then self.in_buf = self:table_move(tmp_buf.table()) else self:table_plus(1,(i-1)*self.full_buf_sz/2, tmp_buf.table() ) end
+            if i==1 then self.in_buf = tmp_buf.table() else self:table_plus(1, (i-1)*self.full_buf_sz, tmp_buf.table() ) end
             --------
-            buf_start = buf_start + (self.full_buf_sz/n_chans)/srate -- to next
+            buf_start = buf_start + self.full_buf_sz/srate -- to next
             ------------------------
             info_str = info_str.."."; self:show_info(info_str..".")  -- show info_str
         end
@@ -1546,18 +1540,18 @@ function Wave:Processing()
        ------
        local tmp_buf = reaper.new_array(size)
        ---------------------------------------------------------
-       local block_start = buf_start - (self.crsx/srate)/n_chans  -- first block in current buf start(regard crsx)   
-       for block=1, n_XBlocks do reaper.GetAudioAccessorSamples(self.AA, srate,n_chans, block_start,block_size, self.buffer)
+       local block_start = buf_start - (self.crsx/srate)   -- first block in current buf start(regard crsx)   
+       for block=1, n_XBlocks do reaper.GetAudioAccessorSamples(self.AA, srate, 1, block_start, block_size, self.buffer)
            --------------------
-           self:Filter_FFT(lowband, hiband)                       -- Filter(note: don't use out of range freq!)
-           tmp_buf.copy(self.buffer, self.crsx+1, n_chans*self.Xblock, (block-1)* n_chans*self.Xblock + 1 ) -- copy block to out_buf with offset
+           self:Filter_FFT(lowband, hiband)                -- Filter(note: don't use out of range freq!)
+           tmp_buf.copy(self.buffer, self.crsx+1, self.Xblock, (block-1)* self.Xblock + 1 ) -- copy block to out_buf with offset
            --------------------
            block_start = block_start + self.Xblock/srate   -- next block start_time
        end
        ---------------------------------------------------------
-       if i==1 then self.out_buf = self:table_move(tmp_buf.table()) else self:table_plus(2,(i-1)*self.full_buf_sz/2, tmp_buf.table() ) end
+       if i==1 then self.out_buf = tmp_buf.table() else self:table_plus(2, (i-1)*self.full_buf_sz, tmp_buf.table() ) end
        --------
-       buf_start = buf_start + (self.full_buf_sz/n_chans)/srate -- to next
+       buf_start = buf_start + (self.full_buf_sz/srate) -- to next
        ------------------------
        info_str = info_str.."."; self:show_info(info_str..".")  -- show info_str
     end
@@ -1757,7 +1751,7 @@ end
 --------------------------------
 -- Verify Project State --------
 --------------------------------
--- проверяет только наличие трека, без проверки содержимого AA
+-- проверяет только наличие трека, без проверки содержимого
 -- нужно для маркеров и тп, допилить!
 function Wave:Verify_Project_State() -- 
     if self.AA and reaper.ValidatePtr2(0, self.track, "MediaTrack*") then
@@ -1766,7 +1760,7 @@ function Wave:Verify_Project_State() --
           --reaper.DestroyAudioAccessor(AA) -- destroy temporary AA
           return true 
        --end
-   end 
+   end
 end 
 --------------------------------------------------------------------------------
 --   Draw controls(buttons,sliders,knobs etc)  ---------------------------------
@@ -1785,7 +1779,7 @@ function Init()
     -- Some gfx Wnd Default Values ---------------
     local R,G,B = 20,20,20              -- 0...255 format
     local Wnd_bgd = R + G*256 + B*65536 -- red+green*256+blue*65536  
-    local Wnd_Title = "TEST"
+    local Wnd_Title = "Drum Trigger"
     local Wnd_Dock,Wnd_X,Wnd_Y = 0,100,320 
     Wnd_W,Wnd_H = 1044,490 -- global values(used for define zoom level)
     -- Init window ------
