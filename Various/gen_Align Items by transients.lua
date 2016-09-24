@@ -601,8 +601,8 @@ end
 --------------------------------------------------
 -- Sliders ---------------------------------------
 --------------------------------------------------
-local Sensetive = H_Slider:new(10,10,300,18,  0.3,0.5,0.5,0.3, "Sensetive","Arial",15, 0.2 )
-function Sensetive:draw_val()
+local Sensitivity = H_Slider:new(10,10,300,18,  0.3,0.5,0.5,0.3, "Sensitivity","Arial",15, 0.2 )
+function Sensitivity:draw_val()
   self.form_val = math.ceil(self.norm_val*100)  -- form value
   local x,y,w,h  = self.x,self.y,self.w,self.h
   local val = string.format("%d", self.form_val).." %"
@@ -648,13 +648,13 @@ end
 --------------------------------------------------
 -- Checboxes -------------------------------------
 --------------------------------------------------
-local RefItem = CheckBox:new(10,100,140,20,  0.3,0.5,0.5,0.3, "", "Arial",15,  1,
-                              {"Reference - Upper Item","Reference - Lower Item"} )
+local RefItem = CheckBox:new(10,100,300,18,  0.3,0.5,0.5,0.3, "", "Arial",15,  1,
+                              {"Reference"} )
 
 --------------------------------------------------
 -- Buttons ---------------------------------------
 --------------------------------------------------
-local Quantize = Button:new(170,100,140,20,  0.3,0.5,0.5,0.3, "Quantize markers", "Arial",15 )
+local Quantize = Button:new(170,130,140,20,  0.3,0.5,0.5,0.3, "Quantize markers", "Arial",15 )
 
 
 --------------------------------------------------
@@ -664,54 +664,65 @@ function onUp_Main()
   Run_Main = true
 end
 ---------------
-Sensetive.onUp  = onUp_Main
+Sensitivity.onUp  = onUp_Main
 Threshold.onUp  = onUp_Main  
 Retrig.onUp     = onUp_Main
 Align.onUp      = onUp_Main
 RefItem.onClick = onUp_Main
-Quantize.onClick = function() reaper.Main_OnCommand(41847, 0) end
+Quantize.onClick = 
+function()
+  local sel_start, sel_end = reaper.GetSet_LoopTimeRange(0, 0, 0, 0, 0)
+  if sel_end - sel_start>0 then reaper.Main_OnCommand(41847, 0)
+     else reaper.Main_OnCommand(41846, 0)
+  end 
+end
 
 --------------------------------------------------
 -- Controls Tables -------------------------------
 --------------------------------------------------
-local Slider_TB   = {Sensetive, Threshold, Retrig, Align}
+local Slider_TB   = {Sensitivity, Threshold, Retrig, Align}
 local CheckBox_TB = {RefItem}
-local Button_TB   = {Quantize}
+--local Button_TB   = {Quantize}
+
+
+
 
 ----------------------------------------------------------------------------------------------------
--- Script ------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------
+--   SCRIPT - MAIN   -------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------
 function Time_Test(start_time, msg_txt)  -- time test function
   local msg_txt = msg_txt or "Proccessing Time = "
   return reaper.ShowConsoleMsg(msg_txt .. reaper.time_precise()-start_time ..'\n')
 end
 ----------------------------------------------------------------------
---  Set Threshold, Sensetive Values  ---------------------------------
+--  Set Threshold, Sensitivity Values  ---------------------------------
 ----------------------------------------------------------------------
 function Set_ThreshSens_Values()
-  -- Set sensetive --------
-  reaper.Main_OnCommand(967, 0)  -- "reset" sensetive
-  for i=1, Sensetive.form_val do     -- new set value
+  -- Set Sensitivity --------
+  reaper.Main_OnCommand(967, 0)  -- "reset" Sensitivity
+  for i=1, Sensitivity.form_val do          -- set new value
      reaper.Main_OnCommand(41536, 0)
   end
   -- Set threshold --------
-  reaper.Main_OnCommand(968, 0)         -- "reset" threshold
-  for i=1, (60 + Threshold.form_val)/0.2 do -- new set value
+  reaper.Main_OnCommand(968, 0)  -- "reset" Threshold
+  for i=1, (60 + Threshold.form_val)/0.2 do -- set new value
      reaper.Main_OnCommand(40218, 0)
   end
 end
 
 ----------------------------------------------------------------------
--- Normalize - UnNormalise Item --------------------------------------
+-- Normalize - UnNormalise Item -----------------------------------------
 ----------------------------------------------------------------------
--- нормализация с учетом уровня айтема и тейка, сохр. ориг уровней --
+-- нормализация с учетом уровня айтема и тейка, сохр. ориг уровней ---
 function Normalize(item, take) 
   -- Save item, take vols for restoring --
   local item_vol = reaper.GetMediaItemInfo_Value(item, "D_VOL") 
   local take_vol = reaper.GetMediaItemTakeInfo_Value(take, "D_VOL")
-  -- Full normalize -------
+  -- Full normalize --
   reaper.SetMediaItemInfo_Value(item, "D_VOL", 1) -- reset item_vol to 1 (0 dB)
-  reaper.Main_OnCommand(40108, -1)                -- normalize(take vol change)
+  reaper.Main_OnCommand(40108, 0)                 -- normalize(take vol change)
   return item_vol, take_vol -- need for restoring previos values
 end
 
@@ -722,23 +733,34 @@ function UnNormalise(item, take, item_vol, take_vol)
 end
 
 ----------------------------------------------------------------------
+-- Del Stretch Markers in range ------------------------------------------
+----------------------------------------------------------------------
+function Del_StretchMarkers()  -- Удаляет существующие маркеры на обр. участке
+  local sel_start, sel_end = reaper.GetSet_LoopTimeRange(0, 0, 0, 0, 0)
+  if sel_end-sel_start>0 then reaper.Main_OnCommand(41845, 0) -- remove str-marks(in time sel) -- case 1
+     else reaper.Main_OnCommand(41844, 0)                     -- remove str-marks(All) -- case 2
+  end
+end
+----------------------------------------------------------------------
 -- Create Stretch Markers tables -------------------------------------
 ----------------------------------------------------------------------
-function Create_MarkersTable(item, take, mrks_start, mrks_end )
+function Create_MarkersTable(item, take, mrks_start, mrks_end)
   local mark_tb = {}
   ----------------------
   reaper.SelectAllMediaItems(0, false)     -- unsel all items
   reaper.SetMediaItemSelected(item, true)  -- sel only current item
-  reaper.Main_OnCommand(41845, 0)          -- remove str-marks in time sel(from sel item)
+  -- Del old markers from time sel or all from item --
+  -- Возможно, работа по time sel не имеет особого смысла...убрать?
+  Del_StretchMarkers() -- Удаляет существующие маркеры на обр. участке
   ----------------------
-  local item_vol,take_vol = Normalize(item, take) -- Normalize
+  local item_vol, take_vol = Normalize(item, take) -- Normalize
   ----------------------
   local retrig = Retrig.form_val/1000
   local last_trig = - retrig
   local curs_pos, last_curs_pos
   ----------------------
-  reaper.SetEditCurPos(mrks_start, false, false)  -- cursor to time sel start 
-  mark_tb[1] = mrks_start                         -- first mark
+  reaper.SetEditCurPos(mrks_start, false, false)  -- cursor to mrks_start 
+  mark_tb[1] = mrks_start                         -- first mark(in mrks_start)
   --------------------------------------
   while true do reaper.Main_OnCommand(40375, 0)   -- cursor to next transient(in sel item)
       curs_pos = reaper.GetCursorPosition()       -- get current curs_pos time 
@@ -752,7 +774,7 @@ function Create_MarkersTable(item, take, mrks_start, mrks_end )
       last_curs_pos = curs_pos                    -- upd last_curs pos
   end
   --------------------------------------
-  mark_tb[#mark_tb+1] = mrks_end                  -- last mark
+  mark_tb[#mark_tb+1] = mrks_end                  -- last mark(in mrks_end)
   ----------------------
   UnNormalise(item, take, item_vol, take_vol)     -- Un-Normalise
   ----------------------
@@ -766,30 +788,28 @@ function Compare_MarkersTables(ref_tb, proc_tb, ref_take, proc_take)
   ------------------------------------------
   local search_zone = (Retrig.form_val/1000)/2 -- зона поиска "парных" маркеров 
   ------------------------------------------
-  -- compare and rebiuild marker-tables ----
+  -- compare and rebuild marker-tables -----
   local next=1
   for i=1, #ref_tb do 
-      local ref_val = ref_tb[i]     -- Референсный маркер из ref_tb 
+      local ref_pos  = ref_tb[i]    -- Позиция референсного маркера(из ref_tb) 
       local min_diff = search_zone
-      local proc_val, res_val, diff 
-      -------------------
+      local proc_pos, diff 
+      ------------------------
       for j=next, #proc_tb  do
-          proc_val = proc_tb[j]     -- Текущий маркер из proc_tb
-          -- for break ---------
-          if proc_val>ref_val+search_zone then break end -- Выход из цикла по выходу из зоны поиска
-          ----------------------
-          diff = math.abs(ref_val-proc_val)
-          ----------------------
+          proc_pos = proc_tb[j]     -- Позиция текущего маркера(из proc_tb)
+          -- for break -------
+          if proc_pos>ref_pos+search_zone then break end -- Выход из цикла по выходу из зоны поиска
+          --------------------
+          diff = math.abs(ref_pos-proc_pos)
+          --------------------
           if diff<min_diff then min_diff = diff    -- обнов. мин. значение и сопутствующие
-                 res_val    = proc_val   -- Возможно, пригодится и потом.
-                 proc_tb[j] = {res_val, ref_val}   -- найденный марк, ориг. позиция и необх. значение
-            else proc_tb[j] = false      -- proc-маркер без пары - на удаление
+                 proc_tb[j] = {proc_pos, ref_pos}  -- найденный марк, ориг. позиция и необх. значение
+            else proc_tb[j] = false                -- proc-маркер без пары - на удаление
           end
-          ---------------------
+          --------------------
           next = j+1
       end
-      -------------------
-      if not res_val then ref_tb[i] = false end   -- ref-маркер без пары - на удаление
+      ------------------------
   end
   ------------------------------------------
   -- process rest from proc_tb if need -----
@@ -798,16 +818,15 @@ function Compare_MarkersTables(ref_tb, proc_tb, ref_take, proc_take)
 end
 
 ----------------------------------------------------------------------
---  Insert Ref Stretch Markers ---------------------------------------
+--  Insert Ref Stretch Markers ------------------------------------------
 ----------------------------------------------------------------------
 function Insert_RefStretchMarkers(ref_item, ref_take, ref_tb)
   local item_start = reaper.GetMediaItemInfo_Value(ref_item, "D_POSITION" )
   local playrate = reaper.GetMediaItemTakeInfo_Value(ref_take, 'D_PLAYRATE') 
-  -- Insert markers --
+  -- Insert ref markers --
   for i=1, #ref_tb do
-     if ref_tb[i] then local pos = (ref_tb[i]-item_start)*playrate
+      local pos = (ref_tb[i]-item_start)*playrate
       reaper.SetTakeStretchMarker(ref_take, -1, pos)
-     end   
   end 
 end
 
@@ -822,9 +841,10 @@ function Insert_Align_ProcStretchMarkers(proc_item, proc_take, proc_tb)
   -- Insert, align markers --
   for i=1, #proc_tb do
      if proc_tb[i] then 
-        local orig_pos     = (proc_tb[i][1]-item_start)*playrate
-        local new_pos_max  = (proc_tb[i][2]-item_start)*playrate 
-        local new_pos  = orig_pos + (new_pos_max-orig_pos)*align_mlt 
+        local orig_pos     = (proc_tb[i][1]-item_start)*playrate       -- original position
+        local new_pos_max  = (proc_tb[i][2]-item_start)*playrate       -- 100% align position
+        local new_pos  = orig_pos + (new_pos_max-orig_pos)*align_mlt   -- new position regard align_mlt
+        -- добавить проверку позиций! --
         local mark_idx = reaper.SetTakeStretchMarker(proc_take, -1, orig_pos, orig_pos+proc_offs) -- add mark to orig pos
         reaper.SetTakeStretchMarker(proc_take, mark_idx, new_pos)                                 -- change position
      end   
@@ -835,33 +855,34 @@ end
 -- Get Start, End Range ----------------------------------------------
 ----------------------------------------------------------------------
 function Get_StartEndRange(ref_item, proc_item)
-  local sel_start, sel_end = reaper.GetSet_LoopTimeRange(0, 0, 0, 0, 0) 
-  -------------
   local ref_item_start, ref_item_end, proc_item_start, proc_item_end   
   ref_item_start = reaper.GetMediaItemInfo_Value(ref_item, 'D_POSITION')
   ref_item_end   = ref_item_start+reaper.GetMediaItemInfo_Value(ref_item, 'D_LENGTH')
   proc_item_start = reaper.GetMediaItemInfo_Value(proc_item, 'D_POSITION')
   proc_item_end   = proc_item_start+reaper.GetMediaItemInfo_Value(proc_item, 'D_LENGTH')
-  return math.max(sel_start,ref_item_start,proc_item_start), math.min(sel_end,ref_item_end,proc_item_end)
+  -------------
+  local sel_start, sel_end = reaper.GetSet_LoopTimeRange(0, 0, 0, 0, 0) 
+  -------------
+  if  sel_end-sel_start>0 then 
+         return math.max(sel_start,ref_item_start,proc_item_start), math.min(sel_end,ref_item_end,proc_item_end)
+    else return math.max(ref_item_start,proc_item_start), math.min(ref_item_end,proc_item_end)
+  end
 end
 
 ----------------------------------------------------------------------
--- Get Items and act Takes -------------------------------------------
+-- Get Items and active Takes ----------------------------------------
 ----------------------------------------------------------------------
-function Get_ItemsTakes()
-  if reaper.CountSelectedMediaItems(0)<2 then return "Need 2 selected Audio-items!" end
-  -- Get items, takes ----------------------------
-  local ref,proc, ref_item,ref_take, proc_item,proc_take
-  if RefItem.norm_val == 1 then ref,proc = 0,1 else ref,proc = 1,0 end
-  ref_item  = reaper.GetSelectedMediaItem(0, ref)
-  ref_take  = reaper.GetActiveTake(ref_item)
-  proc_item = reaper.GetSelectedMediaItem(0, proc)
-  proc_take = reaper.GetActiveTake(proc_item)
-  ------------------------------------------------
-  if not ref_take or not proc_take then return "Empty item!" end -- 
-  if reaper.TakeIsMIDI(ref_take) or reaper.TakeIsMIDI(proc_take) then return "MIDI item!" end -- 
-  ------------------------------------------------
-  return true, ref_item, ref_take, proc_item, proc_take
+function Get_SelItemsTakes()
+  local items_cnt = reaper.CountSelectedMediaItems(0)
+  -------------
+  local items_tb = {}
+  for i=0, items_cnt-1 do 
+      local item = reaper.GetSelectedMediaItem(0, i)
+      local take = reaper.GetActiveTake(item)
+      if take and not reaper.TakeIsMIDI(take) then items_tb[#items_tb+1] = {item, take} end
+  end
+  -------------
+  return items_tb
 end
 
 ----------------------------------------------------------------------
@@ -869,48 +890,78 @@ end
 ----------------------------------------------------------------------
 function MAIN()
   Set_ThreshSens_Values() -- Set Detection settings
-  -- Get items, takes ----------------------------
-  local retval, ref_item, ref_take, proc_item, proc_take = Get_ItemsTakes()
-  if type(retval)=="string" then return reaper.MB(retval, "Info", 0) end
-  -- Get StartEndRange - selection(or items edges in sel) --
-  local mrks_start, mrks_end = Get_StartEndRange(ref_item, proc_item) -- 
+  -- Get selected Items, active Takes --
+  local items_tb = Get_SelItemsTakes()
+  if #items_tb<2 then return reaper.MB("Need two or more selected Audio-Items!", "Info", 0) end
+    ---------------------------------
+    -- исправить, перестройку меню -- 
+    -- перенести в контролы! --------    
+    RefItem.norm_val2 = {}
+    for k,v in pairs(items_tb) do
+       local retval, name = reaper.GetSetMediaItemTakeInfo_String(items_tb[k][2], "P_NAME", "", false)
+       name = "Reference : "..name
+       local len = #name 
+       while gfx.measurestr(name)>RefItem.w-15 do
+             len = len-1  
+             name = name:sub(1,len)..".."
+       end 
+       RefItem.norm_val2[k] = name
+    end
+   --------------------------------- 
+   local ref = RefItem.norm_val
+   ---------------------------------
+   if ref>#items_tb then ref = 1; RefItem.norm_val = 1 end -- if sel items will be changed
+  
   ------------------------------------------------
   ------------------------------------------------
   reaper.PreventUIRefresh(777)
   reaper.Undo_BeginBlock()
   reaper.Main_OnCommand(reaper.NamedCommandLookup("_SWS_SAVEVIEW"), 0) -- SAVE VIEW
-  local usr_curs_pos = reaper.GetCursorPosition() -- store usr cursor pos
-    ----------------------------------------------
-    -- Create markers tables ---------------------
-    local ref_tb  = Create_MarkersTable(ref_item, ref_take, mrks_start, mrks_end)   -- ref str_marks
-    local proc_tb = Create_MarkersTable(proc_item, proc_take, mrks_start, mrks_end) -- proc str_marks
-    ----------------------------------------------
-    --- Compare, Insert, Align markers -----------
-    Compare_MarkersTables(ref_tb, proc_tb, ref_take, proc_take)
-    Insert_RefStretchMarkers(ref_item, ref_take, ref_tb)    -- insert refs
-    Insert_Align_ProcStretchMarkers(proc_item, proc_take, proc_tb)  -- insert and align proc
-  ------------------------------------------------
-  ------------------------------------------------
-  reaper.SetMediaItemSelected(ref_item, true)  -- restore item sel on ref
-  reaper.SetMediaItemSelected(proc_item, true) -- restore item sel on proc
+  local usr_curs_pos = reaper.GetCursorPosition() -- store usr(current) cursor pos
+  
+    ------------------------------------------------ 
+    local ref_item, ref_take = items_tb[ref][1], items_tb[ref][2]      -- Reference
+    -- Реф. таблицу - созд. один раз и в дальнейшем коприруется --
+    local mrks_start, mrks_end = Get_StartEndRange(ref_item, ref_item) -- передается Ref-айтем в арг. чтобы не переписывать
+    local ref_tb = Create_MarkersTable(ref_item, ref_take, mrks_start, mrks_end) -- ref str_marks(реф. маркеры - не трогаются)
+    ------------------------------------------------
+    ------------------------------------------------  
+    for i=1, #items_tb do 
+      if i~=ref then -- Рефер не должен проходить!
+        ----------------------------------------------
+        -- Get StartEndRange - selection(or items edges in sel) --
+        local proc_item, proc_take = items_tb[i][1], items_tb[i][2]     
+        local mrks_start, mrks_end = Get_StartEndRange(ref_item, proc_item) -- Для текущей пары айтемов
+        ----------------------------------------------
+        -- Create markers tables ---------------------
+        local proc_tb = Create_MarkersTable(proc_item, proc_take, mrks_start, mrks_end) -- proc str_marks
+        ----------------------------------------------
+        --- Compare, Insert, Align markers -----------
+        Compare_MarkersTables(ref_tb, proc_tb, ref_take, proc_take)
+        Insert_Align_ProcStretchMarkers(proc_item, proc_take, proc_tb)  -- insert and align proc
+      end 
+    end
+    ------------------------------------------------
+    ------------------------------------------------
+    Insert_RefStretchMarkers(ref_item, ref_take, ref_tb) -- insert refs(все, влючая непарные)
+    reaper.SelectAllMediaItems(0, false)           -- unsel all items
+    for i=1, #items_tb do reaper.SetMediaItemSelected(items_tb[i][1], true) end -- restore sel items 
+    ---------------------
   reaper.SetEditCurPos(usr_curs_pos, false, false) -- restore usr cursor pos
   reaper.Main_OnCommand(reaper.NamedCommandLookup("_SWS_RESTOREVIEW"), 0) -- RESTORE VIEW
-  reaper.Undo_EndBlock("Align Items by transients", 0)
+  reaper.Undo_EndBlock("Align Items by transients", -1)
   reaper.PreventUIRefresh(-777)
   ------------------------------------------------
   ------------------------------------------------
-  reaper.UpdateItemInProject(ref_item)
-  reaper.UpdateItemInProject(proc_item)
   reaper.UpdateTimeline()
 end
-
 
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 --   Draw controls(buttons,sliders,knobs etc)  ---------------------------------
 --------------------------------------------------------------------------------
 function draw_controls()
-    for key,btn    in pairs(Button_TB)   do btn:draw()    end 
+    --for key,btn    in pairs(Button_TB)   do btn:draw()    end 
     for key,sldr   in pairs(Slider_TB)   do sldr:draw()   end
     for key,ch_box in pairs(CheckBox_TB) do ch_box:draw() end
     --for key,frame  in pairs(Frame_TB)    do frame:draw()  end       
@@ -975,6 +1026,5 @@ end
 Run_Main = true
 Init()
 mainloop()
-
 
 
