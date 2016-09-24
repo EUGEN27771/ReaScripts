@@ -1,0 +1,264 @@
+/* 
+   * ReaScript Name:Create stretch-markers at transients
+   * Lua script for Cockos REAPER
+   * Author: EUGEN27771
+   * Author URI: http://forum.cockos.com/member.php?u=50462
+   * Licence: GPL v3
+   * Version: 1.01
+*/
+
+// -- Script creates stretch-markers at transients
+
+function slider_New(x,y,w,h, r,g,b,a, lbl, val,min_val,max_val)
+(
+  this.x = x; this.y = y; this.w = w; this.h = h; // coord
+  this.r = r; this.g = g; this.b = b; this.a = a; // color
+  this.lbl = lbl;
+  this.min_val = min_val; 
+  this.max_val = max_val;
+  this.val = val;
+  this.norm_val = (val - min_val)/(max_val - min_val);; // norm value
+);
+
+//-- Get mouse ---------------
+function pointIN(p_x, p_y)
+( // if point in obj area
+  p_x>=this.x && p_x <= this.x+this.w && 
+  p_y>=this.y && p_y <= this.y+this.h;
+);
+
+function mouseIN()
+( // if mouse in obj area
+  mouse_cap&1==0 && this.pointIN(mouse_x, mouse_y);
+);
+
+function mouseDown()
+( // if mouse will be pressed in obj area
+  mouse_cap&1==1 && this.pointIN(mouse_ox,mouse_oy);
+);
+
+function mouseUp()
+( // if mouse released(anywhere) and will be pressed in obj area
+  mouse_cap&1==0 && this.pointIN(mouse_ox,mouse_oy);
+);
+
+//-- Set value ---------------
+function set_value()
+ local(norm_val, K )
+(
+  K = 10; // K = coeff(when Ctrl pressed)
+  Ctrl ? (
+    norm_val = this.norm_val + ((mouse_x-last_x)/(this.w*K));
+  ) : (
+    norm_val = (mouse_x-this.x)/this.w;
+  );
+   
+  this.norm_val = min( max(norm_val,0), 1 ); // verify and set value
+  this.val = this.min_val + (this.max_val-this.min_val) * this.norm_val;
+); 
+
+//-- Draw slider -------------
+function slider_draw()
+  local(x,y,w,h, r,g,b,a, lbl,lbl_w,lbl_h, val,val_w,val_h)
+( 
+  x=this.x; y=this.y; w=this.w; h=this.h;
+  r=this.r; g=this.g; b=this.b; a=this.a;
+  lbl=this.lbl;
+  
+  this.mouseIN() ? a=a+0.1;
+  this.mouseDown() ? (
+    a=a+0.2; 
+    this.set_value();
+    //this.onMove();
+  );
+  
+  this.mouseUp() ? (
+    //this.onUp(); 
+    RunMain = 1;
+    mouse_ox = mouse_oy = -1; // reset mouse
+  );  
+  
+  //-- draw body, frame ---
+  gfx_set(r,g,b,a);
+  gfx_rect(x,y,w,h, 0);
+  gfx_rect(x,y,w*this.norm_val,h, 1);
+  //-- draw label ---------
+  gfx_set(0.9,0.8,0.5,1);
+  gfx_measurestr(lbl, lbl_w, lbl_h);
+  gfx_x = x+5; gfx_y = y+(h-lbl_h)/2;
+  gfx_drawstr(lbl);
+  //-- draw value ---------
+  val = sprintf(#, "%.2f", this.val); 
+  gfx_measurestr(val, val_w, val_h);
+  gfx_x = x+w-val_w-5; gfx_y = y+(h-val_h)/2;
+  gfx_drawstr(val); // draw Slider Value
+
+);
+
+//==========================================================================================================//
+
+//-- Create Sliders --------------------------
+//-- args = (x,y,w,h, r,g,b,a, lbl, val,min_val,max_val)
+Thresh.slider_New(10,10,260,18, 0.5,0.5,0.5,0.3, "Threshold dB",   -24, -60,   0 );
+Sens.slider_New(10,30,260,18, 0.5,0.5,0.5,0.3, "Sensetivity dB",  4.5,   0,  18 );
+Retrig.slider_New(10,50,260,18, 0.5,0.5,0.5,0.3, "Retrig ms",  20,  20, 450 );
+
+
+//==========================================================================================================//
+
+//--------------------------------------------------------------------------------
+//---  Simple Detect Transients Function  ----------------------------------------
+//--------------------------------------------------------------------------------
+function DetectTransients(item, srate, Threshold_dB, Sensitivity_dB, Retrig_sec)
+  local(Threshold, Sensitivity, Retrig, 
+        attTime1, relTime1, attTime2, relTime2, ga1, gr1, ga2, gr2, envOut1, envOut2
+        take, item_len, item_len_smpls,
+        AA, starttime_sec, samplebuffer, n_blocks, input, smpl, mrk_pos, retrig_cnt)
+(      
+  //-- Threshold, Sensitivity, Retrig to norm values ---
+  Threshold   = 10^(Threshold_dB/20);    //-- Threshold_dB - to norm value
+  Sensitivity = 10^(Sensitivity_dB/20);  //-- Sensitivity_dB - to norm value
+  Retrig      = floor(Retrig_sec*srate); //-- Retrig_sec - to samples
+
+  //-- Envelopes Attack, Release Time -----------------
+  attTime1 = 0.001;           //-- Env1(fast) attack(sec)
+  relTime1 = 0.010;           //-- Env1(fast) release(sec)
+  attTime2 = 0.007;           //-- Env2(slow) attack(sec)
+  relTime2 = 0.015;           //-- Env2(slow) release(sec)
+
+  //-- Compute sample frequency related coeffs --------
+  ga1 = exp(-1/(srate*attTime1));  //-- attack1 coeff
+  gr1 = exp(-1/(srate*relTime1));  //-- release1 coeff
+  ga2 = exp(-1/(srate*attTime2));  //-- attack2 coeff
+  gr2 = exp(-1/(srate*relTime2));  //-- release2 coeff
+  //---------------------------------------------------
+  envOut1 = 0;
+  envOut2 = 0;
+  
+    //-- item, take data ------------------------------
+    take = GetActiveTake(item);
+    playrate  = GetMediaItemTakeInfo_Value(take, "D_PLAYRATE"); // get orig playrate
+    SetMediaItemTakeInfo_Value(take, "D_PLAYRATE", 1);          // set playrate = 1  
+    item_len  = GetMediaItemInfo_Value(item, "D_LENGTH");
+    item_len_smpls = floor(item_len*srate);
+    //-------------------------------------------------
+    AA = CreateTakeAudioAccessor(take);
+    starttime_sec = 0;
+    samplebuffer = 0;
+    n_blocks = ceil(item_len_smpls/65536);
+    
+    // -- Detect Transients --------------------------------
+    loop(n_blocks, 
+        GetAudioAccessorSamples(AA, srate, 1, starttime_sec, 65536, samplebuffer);
+        smpl=0;
+        loop(65536,
+            input = abs(samplebuffer[smpl]); // abs sample value(abs envelope)
+
+            // -- Envelope1(fast) --------------------------
+            envOut1 < input ? (
+              envOut1 = input + ga1*(envOut1 - input);
+            ) : (
+              envOut1 = input + gr1*(envOut1 - input);
+            );
+            
+            // -- Envelope2(slow) --------------------------
+            envOut2 < input ? (
+              envOut2 = input + ga2*(envOut2 - input);
+            ) : (
+              envOut2 = input + gr2*(envOut2 - input);
+            );
+            
+            // -- Trigger ---------------------------------- 
+            retrig_cnt > Retrig ? (
+              envOut1 > Threshold && envOut1/envOut2 > Sensitivity ? (
+                mrk_pos = starttime_sec + smpl/srate;    // Calc mrk pos
+                SetTakeStretchMarker(take, -1, mrk_pos); // Insert marker
+                retrig_cnt = 0;
+              );                
+            ) : (           
+              envOut2 = envOut1; // уравнивает огибающие, пока триггер неактивен(здесь важно)
+              retrig_cnt+=1;
+            );                  
+            smpl+=1;   
+        );
+        starttime_sec+=65536/srate; // To next block
+    );
+  
+  DestroyAudioAccessor(AA);
+  SetMediaItemTakeInfo_Value(take, "D_PLAYRATE", playrate); // restore orig playrate           
+  UpdateTimeline();          
+);
+
+
+//==========================================================================================================//
+function MAIN()
+local(item, srate, Threshold_dB, Sensitivity_dB, Retrig_sec)  
+(
+  item = GetSelectedMediaItem(0, 0);
+  
+  item ? (
+    //-- Detection settings --
+    srate = 44100;
+    Threshold_dB   = Thresh.val; 
+    Sensitivity_dB = Sens.val;
+    Retrig_sec     = Retrig.val/1000;
+    Main_OnCommand(41844, 0);  // remove old str-marks(All)
+    //------------------------
+    start = time_precise();
+    DetectTransients(item, srate, Threshold_dB, Sensitivity_dB, Retrig_sec);
+    //ShowConsoleMsg(sprintf(#, "%f \n", time_precise()-start); );
+  );
+
+);
+
+//----------------------------
+function Draw_Sliders()
+(
+  Thresh.slider_draw();
+  Sens.slider_draw();
+  Retrig.slider_draw();
+);
+
+//-- mainloop ----------------
+function mainloop()
+(
+  //-- mouse and modkeys --
+  mouse_cap&1==1 && last_mouse_cap&1==0  ||       //-- L mouse
+  mouse_cap&2==2 && last_mouse_cap&2==0  ||       //-- R mouse
+  mouse_cap&64==64 && last_mouse_cap&64==0 ? (    //-- M mouse
+    mouse_ox = mouse_x; mouse_oy = mouse_y;
+  ); 
+
+  Ctrl  = mouse_cap&4==4;   //-- Ctrl  state
+  Shift = mouse_cap&8==8;   //-- Shift state
+  Alt   = mouse_cap&16==16; //-- Shift state
+  
+  //-- Main functions etc --
+  Draw_Sliders();
+  RunMain ? (MAIN(); RunMain = 0;); 
+  //------------------------
+  last_mouse_cap = mouse_cap;
+  last_x = mouse_x; last_y = mouse_y;
+  char = gfx_getchar();
+  char >= 0 ? defer("mainloop();");
+  gfx_update();
+);
+
+//-- init --------------------
+function init()
+  local(width, height, dockstate, xpos, ypos)
+( //-- window -----------
+  width = 280; height = 80; dockstate = 0; xpos = 200; ypos = 300;
+  gfx_init("Create stretch-markers at transients(eel)",width,height,dockstate,xpos,ypos);
+  gfx_clear = 25 + 25*256 + 25*65536;
+  //-- Init mouse -------
+  last_mouse_cap = 0;
+  last_x = last_y = 0;
+  mouse_ox = mouse_oy = -1;
+  
+  gfx_setfont(1, "Arial", 15);
+);
+
+RunMain = 1;// for first run
+init();
+mainloop();
