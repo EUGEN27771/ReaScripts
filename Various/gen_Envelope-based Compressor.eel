@@ -161,9 +161,9 @@ function button_draw()
 );
 
 
-/*---------------------------------------------------------------------------------------
-=== Create controls =====================================================================
----------------------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------------------
+=== Create controls ======================================================================
+----------------------------------------------------------------------------------------*/
 
 //-- Create Sliders --------------------
 //-- args = (x,y,w,h, r,g,b,a, lbl, val,min_val,max_val)
@@ -181,13 +181,14 @@ OutGain.slider_New(10,140,260,18,  0.3,0.4,0.5,0.2, "OutGain dB",      0,   -6, 
 //-- Create Buttons --------------------
 //-- args = (x,y,w,h, r,g,b,a, lbl)
 ActEnv.button_New(10,170,125,20,   0.5,0.3,0.3,0.2, "Activate Envelope");
-VisEnv.button_New(145,170,125,20,   0.5,0.3,0.3,0.2, "Show Envelope");
+VisEnv.button_New(145,170,125,20,  0.5,0.3,0.3,0.2, "Show Envelope");
 
 //======================================================================================//
 
-//--------------------------------------------------------------------------------
-//--- Toggle active, visible vol envelope ----------------------------------------
-//--------------------------------------------------------------------------------
+
+//----------------------------------------------------------------------------------------
+//--- Toggle active, visible vol envelope ------------------------------------------------
+//----------------------------------------------------------------------------------------
 function ToggleActVis_VolEnvelope(mode)
   local(item, take, VolEnv, BR_Env,
         BR_Env, active,visible,armed, inLane,laneHeight, 
@@ -197,111 +198,141 @@ function ToggleActVis_VolEnvelope(mode)
   take = GetActiveTake(item);
   //-- Get take "Volume" envelope ------
   VolEnv = GetTakeEnvelopeByName(take,"Volume");
-   !VolEnv ? (
-     Main_OnCommand(NamedCommandLookup("_S&M_TAKEENV1"), 0);
-     VolEnv = GetTakeEnvelopeByName(take,"Volume");
-    );
-  BR_Env = extension_api("BR_EnvAlloc", VolEnv, 0);
-  extension_api("BR_EnvGetProperties", BR_Env, active,visible,armed, inLane,laneHeight, 
-                defShape, minVal,maxVal,centerVal, type, faderScaling);
-  
-  mode == "act" ? active = !active;
-  mode == "vis" ? visible = !visible;
-  
-  extension_api("BR_EnvSetProperties", BR_Env, active,visible,armed, inLane,laneHeight, 
-                defShape, faderScaling);
-  extension_api("BR_EnvFree", BR_Env, 1);
-
+  //-- Toggle act,vis depend of mode ---
+  VolEnv ? (
+    BR_Env = extension_api("BR_EnvAlloc", VolEnv, 0);
+    extension_api("BR_EnvGetProperties", BR_Env, active,visible,armed, inLane,laneHeight, 
+                  defShape, minVal,maxVal,centerVal, type, faderScaling);
+    mode == "act" ? active  = !active;  // toggle active
+    mode == "vis" ? visible = !visible; // toggle visible
+    extension_api("BR_EnvSetProperties", BR_Env, active,visible,armed, inLane,laneHeight, 
+                  defShape, faderScaling);
+    extension_api("BR_EnvFree", BR_Env, 1);
+  );
+  //--------- 
+  !VolEnv ? (
+    Main_OnCommand(NamedCommandLookup("_S&M_TAKEENV1"), 0);
+    VolEnv = GetTakeEnvelopeByName(take,"Volume");
+  );
 );
 
-//--------------------------------------------------------------------------------
-//--- Rebuild volume envelope ----------------------------------------------------
-//--------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------
+//--- Rebuild volume envelope ------------------------------------------------------------
+//----------------------------------------------------------------------------------------
 function RebuildVolEnvelope(item, take, srate, VolEnv)
   local(Threshold_dB, PreComp_sec, Attack_sec, Release_sec, Comp, Interval_sec, Out_dB,  
         Threshold, Interval, Out, ga, gr,
-        playrate, item_len, item_len_smpls, block_size, n_blocks, env_mode,
-        AA, starttime_sec, samplebuffer, smpl, 
+        item_start, item_len, sel_start, sel_end, playrate, range_start, range_len, range_len_smpls, 
+        block_size, n_blocks, rest_smples, rs_val, re_val, env_mode,
+        AA, starttime_sec, samplebuffer, smpl, cur_block, 
         input, envOut, envOut_dB, diff_dB, point_pos, point_val, interval_cnt)
-(      
-  playrate  = GetMediaItemTakeInfo_Value(take, "D_PLAYRATE");        // get orig playrate
-  playrate != 1 ? SetMediaItemTakeInfo_Value(take, "D_PLAYRATE", 1); // faster with playrate = 1  
-  item_len  = GetMediaItemInfo_Value(item, "D_LENGTH");
-  item_len_smpls = floor(item_len*srate);     // length to samples
-  block_size = 65536;                         // one block size(sampls)
-  n_blocks = ceil(item_len_smpls/block_size); // n full blocks rnd up
+( 
+  item_start = GetMediaItemInfo_Value(item, "D_POSITION"); // item position
+  item_len  = GetMediaItemInfo_Value(item, "D_LENGTH");    // item orig length
+  GetSet_LoopTimeRange(0, 0, sel_start, sel_end, 0);       // get time selection
+  !(sel_end - sel_start) ? (       // if no selection
+    sel_start = item_start;        // use item start
+    sel_end = item_start+item_len; // use item end
+  );
+  sel_start = max(sel_start, item_start);         // if sel_start or sel_end out of item
+  sel_end   = min(sel_end, item_start+item_len);  // use item_start, item_end respectively
+  sel_end - sel_start < 0 ? MB("Time selection out of item range!", "Note", 0); 
   
-  //-- Values from sliders ----------------------------
-  Threshold_dB = Thresh.val; 
-  PreComp_sec  = PreComp.val/1000; 
-  Attack_sec   = Attack.val/1000;
-  Release_sec  = Release.val/1000;
-  Comp         = Compress.val;
-  Interval_sec = Interval.val/1000;
-  Out_dB       = OutGain.val;
-  //-- Values to norm values --------------------------
-  Threshold   = 10^(Threshold_dB/20);      // Threshold_dB - to norm value
-  Interval    = floor(Interval_sec*srate); // Interval_sec - to samples
-  Out = 10^(Out_dB/20);                    // Out_dB - to norm value
-  //-- Compute sample frequency related coeffs --------
-  ga = exp(-1/(srate*Attack_sec));  // attack coeff
-  gr = exp(-1/(srate*Release_sec)); // release coeff
-
   
-    //-------------------------------------------------
-    DeleteEnvelopePointRange(VolEnv, 0, item_len); // del old points
-    env_mode = GetEnvelopeScalingMode(VolEnv);     // get mode
-    //-------------------------------------------------
-    AA = CreateTakeAudioAccessor(take);
-    starttime_sec = 0;
-    samplebuffer = 0;
-    interval_cnt = 0;
-    envOut = 0;
-    
-    // -- Create Envelope -----------------------------
-    loop(n_blocks, 
-        GetAudioAccessorSamples(AA, srate, 1, starttime_sec, block_size, samplebuffer);
-        smpl=0;
-        loop(block_size,
-            input = abs(samplebuffer[smpl]); // abs sample value(abs envelope)
-
-            // -- envelope follower -------------------
-            envOut < input ? (
-              envOut = input + ga*(envOut - input);
-            ) : (
-              envOut = input + gr*(envOut - input);
-            );
-                        
-            // -- Add point to take vol env -----------
-            interval_cnt > Interval ? (
-              point_pos = starttime_sec-PreComp_sec + smpl/srate; // Env point position
-              //-----
-              envOut > Threshold ? (
-                 envOut_dB = 20*log10(envOut); 
-                 diff_dB = Threshold_dB - envOut_dB; 
-                 point_val =  10^((diff_dB*Comp)/20);             // Env point value             
-              ) : point_val = 1; 
-              
-              point_val = ScaleToEnvelopeMode(env_mode,  point_val)  * Out; // Scale point val
-              //-----
-              point_pos>=0 && point_pos<= item_len ? (
-                InsertEnvelopePoint(VolEnv, point_pos, point_val, 0, 0, 0, 1); // Insert point
-              ); 
-              
-              interval_cnt = 0; // reset interval counter
-            );
-            
-            interval_cnt+=1;                  
-            smpl+=1;   
-        );
-        starttime_sec+=block_size/srate; // To next block
+  //----------------------------------------------------------------------------
+  sel_end - sel_start > 0 ? ( 
+    //-- If playrate != 1 ----------------------------------
+    playrate  = GetMediaItemTakeInfo_Value(take, "D_PLAYRATE"); // get take orig playrate
+    playrate != 1 ? (
+      SetMediaItemTakeInfo_Value(take, "D_PLAYRATE", 1); // faster with playrate = 1
+      SetMediaItemInfo_Value(item, "D_LENGTH", item_len*playrate); // len*playrate 
     );
+    //-- Define range(with regard orig playrate) -----------
+    range_start = (sel_start-item_start)*playrate;  // range start
+    range_len = (sel_end-sel_start)*playrate;       // range length
+    range_len_smpls = floor(range_len*srate);       // range length to samples
+    block_size = 65536;                                   // full block size(samples)
+    n_blocks = floor(range_len_smpls/block_size);         // number of full blocks
+    rest_smples = range_len_smpls - block_size*n_blocks;  // rest of samples(incomplete last block)
+    //-- Del Old, Ins points at edges(use cur values) ------
+    Envelope_Evaluate(VolEnv, range_start, srate, 0, rs_val);           // get env val at start
+    Envelope_Evaluate(VolEnv, range_start+range_len, srate, 0, re_val); // get val at end
+    DeleteEnvelopePointRange(VolEnv, range_start-0.0001, range_start+range_len+0.0001); // Del Old 
+    InsertEnvelopePoint(VolEnv, range_start, rs_val, 0, 0, 0, 1);           // Insert point at start
+    InsertEnvelopePoint(VolEnv, range_start+range_len, re_val, 0, 0, 0, 1); // Insert point at end
+    env_mode = GetEnvelopeScalingMode(VolEnv);            // get VolEnv scaling mode
+    
+    //-- Values from sliders -------------------------------
+    Threshold_dB = Thresh.val; 
+    PreComp_sec  = PreComp.val/1000; 
+    Attack_sec   = Attack.val/1000;
+    Release_sec  = Release.val/1000;
+    Comp         = Compress.val;
+    Interval_sec = Interval.val/1000;
+    Out_dB       = OutGain.val;
+    //-- Values to norm values -----------------------------
+    Threshold   = 10^(Threshold_dB/20);      // Threshold_dB - to norm value
+    Interval    = floor(Interval_sec*srate); // Interval_sec - to samples
+    Out = 10^(Out_dB/20);                    // Out_dB - to norm value
+    //-- Compute sample frequency related coeffs -----------
+    ga = exp(-1/(srate*Attack_sec));  // attack coeff
+    gr = exp(-1/(srate*Release_sec)); // release coeff
   
-  DestroyAudioAccessor(AA);
-  playrate != 1 ? SetMediaItemTakeInfo_Value(take, "D_PLAYRATE", playrate); // restore orig           
-  Envelope_SortPoints(VolEnv);
-  UpdateTimeline();
-  UpdateArrange();          
+      //----------------------------------------------------
+      AA = CreateTakeAudioAccessor(take);
+      starttime_sec = range_start+PreComp_sec; // first block start(regard PreComp)  
+      samplebuffer = 0;
+      cur_block = 0;
+      interval_cnt = 0;
+      envOut = 0;
+
+      // -- Create VolEnvelope -----------------------------
+      loop(n_blocks+1,
+          cur_block == n_blocks ? block_size = rest_smples; // last block = rested samples  
+          memset(0,0,block_size); // clear samplebuffer
+          GetAudioAccessorSamples(AA, srate, 1, starttime_sec, block_size, samplebuffer);
+            smpl=0;
+            loop(block_size,
+                input = abs(samplebuffer[smpl]); // abs sample value(abs envelope)
+                // -- amp envelope follower ----------------
+                envOut < input ? (
+                  envOut = input + ga*(envOut - input);
+                ) : (
+                  envOut = input + gr*(envOut - input);
+                );           
+                // -- Add point to take VolEnv -------------
+                interval_cnt > Interval ? (
+                  point_pos = starttime_sec-PreComp_sec + smpl/srate; // Env point position
+                  point_val = 1; // Env point init value 
+                  // -------------------
+                  envOut > Threshold ? (
+                     envOut_dB = 20*log10(envOut); 
+                     diff_dB = Threshold_dB - envOut_dB; // diff(in dB) 
+                     point_val = 10^((diff_dB*Comp)/20); // Env point value             
+                  ); 
+                  // -------------------
+                  point_val = ScaleToEnvelopeMode(env_mode,  point_val) * Out;   // Scale point val
+                  InsertEnvelopePoint(VolEnv, point_pos, point_val, 0, 0, 0, 1); // Insert point
+                  interval_cnt = 0; // reset interval counter
+                );
+                
+                interval_cnt+=1;                  
+                smpl+=1;   
+            );
+          starttime_sec+=block_size/srate; // next block starttime
+          cur_block+=1; // block counter
+      );
+    
+      DestroyAudioAccessor(AA);
+      playrate != 1 ? (
+        SetMediaItemTakeInfo_Value(take, "D_PLAYRATE", playrate); // restore orig playrate
+        SetMediaItemInfo_Value(item, "D_LENGTH", item_len);  // restore orig length
+      );          
+      Envelope_SortPoints(VolEnv);
+      UpdateTimeline();
+      UpdateArrange();          
+  );  
+
 );
 
 
