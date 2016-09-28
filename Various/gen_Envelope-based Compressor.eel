@@ -311,7 +311,7 @@ function RebuildVolEnvelope(item, take, srate, VolEnv)
                      point_val = 10^((diff_dB*Comp)/20); // Env point value             
                   ); 
                   // -------------------
-                  point_val = ScaleToEnvelopeMode(env_mode,  point_val) * Out;   // Scale point val
+                  point_val = ScaleToEnvelopeMode(env_mode,  point_val * Out);   // Scale point val
                   InsertEnvelopePoint(VolEnv, point_pos, point_val, 0, 0, 0, 1); // Insert point
                   interval_cnt = 0; // reset interval counter
                 );
