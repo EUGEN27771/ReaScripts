@@ -248,7 +248,7 @@ local(item, take, PCM_source, srate, Threshold_dB, Sensitivity_dB, Retrig_sec)
     Undo_BeginBlock();
     DetectTransients(item, take, srate);
     Undo_EndBlock("Create stretch-markers at transients", -1);
-    ShowConsoleMsg(sprintf(#, "%f \n", time_precise()-start); );
+    //ShowConsoleMsg(sprintf(#, "%f \n", time_precise()-start); );
   );
 
 );
