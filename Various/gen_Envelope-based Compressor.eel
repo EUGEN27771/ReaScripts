@@ -380,9 +380,9 @@ function Draw_Controls()
 function mainloop()
 (
   //-- mouse and modkeys --
-  mouse_cap&1==1 && last_mouse_cap&1==0  ||       //-- L mouse
-  mouse_cap&2==2 && last_mouse_cap&2==0  ||       //-- R mouse
-  mouse_cap&64==64 && last_mouse_cap&64==0 ? (    //-- M mouse
+  (mouse_cap&1==1 && last_mouse_cap&1==0)  ||       //-- L mouse
+  (mouse_cap&2==2 && last_mouse_cap&2==0)  ||       //-- R mouse
+  (mouse_cap&64==64 && last_mouse_cap&64==0) ? (    //-- M mouse
     mouse_ox = mouse_x; mouse_oy = mouse_y;
   ); 
 
