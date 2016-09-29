@@ -109,104 +109,146 @@ Retrig.slider_New(10,50,260,18, 0.5,0.5,0.5,0.3, "Retrig ms",  20,  20, 450 );
 //--------------------------------------------------------------------------------
 //---  Simple Detect Transients Function  ----------------------------------------
 //--------------------------------------------------------------------------------
-function DetectTransients(item, srate, Threshold_dB, Sensitivity_dB, Retrig_sec)
-  local(Threshold, Sensitivity, Retrig, 
+function DetectTransients(item, take, srate)
+  local(Threshold_dB, Sensitivity_dB, Retrig_sec,  Threshold, Sensitivity, Retrig, 
         attTime1, relTime1, attTime2, relTime2, ga1, gr1, ga2, gr2, envOut1, envOut2
-        take, item_len, item_len_smpls,
-        AA, starttime_sec, samplebuffer, n_blocks, input, smpl, mrk_pos, retrig_cnt)
+        item_start, item_len, sel_start, sel_end, playrate, range_start, range_len, range_end, range_len_smpls,
+        block_size, n_blocks, rest_smples, mrk,
+        AA, starttime_sec, samplebuffer, cur_block, smpl, input, mrk_pos, retrig_cnt)
 (      
-  //-- Threshold, Sensitivity, Retrig to norm values ---
-  Threshold   = 10^(Threshold_dB/20);    //-- Threshold_dB - to norm value
-  Sensitivity = 10^(Sensitivity_dB/20);  //-- Sensitivity_dB - to norm value
-  Retrig      = floor(Retrig_sec*srate); //-- Retrig_sec - to samples
-
-  //-- Envelopes Attack, Release Time -----------------
-  attTime1 = 0.001;           //-- Env1(fast) attack(sec)
-  relTime1 = 0.010;           //-- Env1(fast) release(sec)
-  attTime2 = 0.007;           //-- Env2(slow) attack(sec)
-  relTime2 = 0.015;           //-- Env2(slow) release(sec)
-
-  //-- Compute sample frequency related coeffs --------
-  ga1 = exp(-1/(srate*attTime1));  //-- attack1 coeff
-  gr1 = exp(-1/(srate*relTime1));  //-- release1 coeff
-  ga2 = exp(-1/(srate*attTime2));  //-- attack2 coeff
-  gr2 = exp(-1/(srate*relTime2));  //-- release2 coeff
-  //---------------------------------------------------
-  envOut1 = 0;
-  envOut2 = 0;
+  item_start = GetMediaItemInfo_Value(item, "D_POSITION"); // item position
+  item_len  = GetMediaItemInfo_Value(item, "D_LENGTH");    // item orig length
+  GetSet_LoopTimeRange(0, 0, sel_start, sel_end, 0);       // get time selection
+  !(sel_end - sel_start) ? (       // if no selection
+    sel_start = item_start;        // use item start
+    sel_end = item_start+item_len; // use item end
+  );
+  sel_start = max(sel_start, item_start);         // if sel_start or sel_end out of item
+  sel_end   = min(sel_end, item_start+item_len);  // use item_start, item_end respectively
+  sel_end - sel_start < 0 ? MB("Time selection out of item range!", "Note", 0); 
   
-    //-- item, take data ------------------------------
-    take = GetActiveTake(item);
-    playrate  = GetMediaItemTakeInfo_Value(take, "D_PLAYRATE"); // get orig playrate
-    SetMediaItemTakeInfo_Value(take, "D_PLAYRATE", 1);          // set playrate = 1  
-    item_len  = GetMediaItemInfo_Value(item, "D_LENGTH");
-    item_len_smpls = floor(item_len*srate);
-    //-------------------------------------------------
-    AA = CreateTakeAudioAccessor(take);
-    starttime_sec = 0;
-    samplebuffer = 0;
-    n_blocks = ceil(item_len_smpls/65536);
-    
-    // -- Detect Transients --------------------------------
-    loop(n_blocks, 
-        GetAudioAccessorSamples(AA, srate, 1, starttime_sec, 65536, samplebuffer);
-        smpl=0;
-        loop(65536,
-            input = abs(samplebuffer[smpl]); // abs sample value(abs envelope)
-
-            // -- Envelope1(fast) --------------------------
-            envOut1 < input ? (
-              envOut1 = input + ga1*(envOut1 - input);
-            ) : (
-              envOut1 = input + gr1*(envOut1 - input);
-            );
-            
-            // -- Envelope2(slow) --------------------------
-            envOut2 < input ? (
-              envOut2 = input + ga2*(envOut2 - input);
-            ) : (
-              envOut2 = input + gr2*(envOut2 - input);
-            );
-            
-            // -- Trigger ---------------------------------- 
-            retrig_cnt > Retrig ? (
-              envOut1 > Threshold && envOut1/envOut2 > Sensitivity ? (
-                mrk_pos = starttime_sec + smpl/srate;    // Calc mrk pos
-                SetTakeStretchMarker(take, -1, mrk_pos); // Insert marker
-                retrig_cnt = 0;
-              );                
-            ) : (           
-              envOut2 = envOut1; // уравнивает огибающие, пока триггер неактивен(здесь важно)
-              retrig_cnt+=1;
-            );                  
-            smpl+=1;   
-        );
-        starttime_sec+=65536/srate; // To next block
+  
+  //----------------------------------------------------------------------------
+  sel_end - sel_start > 0 ? ( 
+    //-- If playrate != 1 ----------------------------------
+    playrate  = GetMediaItemTakeInfo_Value(take, "D_PLAYRATE"); // get take orig playrate
+    playrate != 1 ? (
+      SetMediaItemTakeInfo_Value(take, "D_PLAYRATE", 1); // faster with playrate = 1
+      SetMediaItemInfo_Value(item, "D_LENGTH", item_len*playrate); // len*playrate 
     );
+    //-- Define range(with regard orig playrate) -----------
+    range_start = (sel_start-item_start)*playrate;  // range start
+    range_len = (sel_end-sel_start)*playrate;       // range length
+    range_end = range_start+range_len;
+    range_len_smpls = floor(range_len*srate);       // range length to samples
+    block_size = 65536;                                   // full block size(samples)
+    n_blocks = floor(range_len_smpls/block_size);         // number of full blocks
+    rest_smples = range_len_smpls - block_size*n_blocks;  // rest of samples(incomplete last block)
   
-  DestroyAudioAccessor(AA);
-  SetMediaItemTakeInfo_Value(take, "D_PLAYRATE", playrate); // restore orig playrate           
-  UpdateTimeline();          
+    //-- Del Old markers in range --------------------------
+    mrk=0;
+    loop(GetTakeNumStretchMarkers(take),
+        GetTakeStretchMarker(take, mrk, mrk_pos);
+        mrk_pos>=range_start && mrk_pos<=range_end ? (
+          DeleteTakeStretchMarkers(take, mrk);
+        ) : mrk+=1;
+    );
+    
+    //-- Values from sliders -------------------------------
+    Threshold_dB   = Thresh.val; 
+    Sensitivity_dB = Sens.val;
+    Retrig_sec     = Retrig.val/1000;
+    //Main_OnCommand(41844, 0);  // remove old str-marks(All)
+    //-- Values to norm values -----------------------------
+    Threshold   = 10^(Threshold_dB/20);    //-- Threshold_dB - to norm value
+    Sensitivity = 10^(Sensitivity_dB/20);  //-- Sensitivity_dB - to norm value
+    Retrig      = floor(Retrig_sec*srate); //-- Retrig_sec - to samples
+  
+    //-- Envelopes Attack, Release Time -----------------
+    attTime1 = 0.001;           //-- Env1(fast) attack(sec)
+    relTime1 = 0.010;           //-- Env1(fast) release(sec)
+    attTime2 = 0.007;           //-- Env2(slow) attack(sec)
+    relTime2 = 0.015;           //-- Env2(slow) release(sec)
+  
+    //-- Compute sample frequency related coeffs --------
+    ga1 = exp(-1/(srate*attTime1));  //-- attack1 coeff
+    gr1 = exp(-1/(srate*relTime1));  //-- release1 coeff
+    ga2 = exp(-1/(srate*attTime2));  //-- attack2 coeff
+    gr2 = exp(-1/(srate*relTime2));  //-- release2 coeff
+    //---------------------------------------------------
+    envOut1 = 0;
+    envOut2 = 0;
+  
+      //-------------------------------------------------
+      AA = CreateTakeAudioAccessor(take);
+      starttime_sec = range_start;
+      samplebuffer = 0;
+      cur_block = 0;
+      
+      // -- Detect Transients --------------------------------
+      loop(n_blocks+1, 
+          cur_block == n_blocks ? block_size = rest_smples; // last block = rested samples  
+          memset(0,0,block_size); // clear samplebuffer
+          GetAudioAccessorSamples(AA, srate, 1, starttime_sec, block_size, samplebuffer);
+            smpl=0;
+            loop(block_size,
+                input = abs(samplebuffer[smpl]); // abs sample value(abs envelope)
+                // -- Envelope1(fast) --------------------------
+                envOut1 < input ? (
+                  envOut1 = input + ga1*(envOut1 - input);
+                ) : (
+                  envOut1 = input + gr1*(envOut1 - input);
+                );
+                // -- Envelope2(slow) --------------------------
+                envOut2 < input ? (
+                  envOut2 = input + ga2*(envOut2 - input);
+                ) : (
+                  envOut2 = input + gr2*(envOut2 - input);
+                );
+                // -- Trigger ---------------------------------- 
+                retrig_cnt > Retrig ? (
+                  envOut1 > Threshold && envOut1/envOut2 > Sensitivity ? (
+                    mrk_pos = starttime_sec + smpl/srate;    // Calc mrk pos
+                    SetTakeStretchMarker(take, -1, mrk_pos); // Insert marker
+                    retrig_cnt = 0;
+                  );                
+                ) : (           
+                  envOut2 = envOut1; // уравнивает огибающие, пока триггер неактивен(здесь важно)
+                  retrig_cnt+=1;
+                );                  
+                
+                smpl+=1;   
+            );
+          starttime_sec+=65536/srate; // To next block
+          cur_block+=1; // block counter
+      );
+    
+      DestroyAudioAccessor(AA);
+      playrate != 1 ? (
+        SetMediaItemTakeInfo_Value(take, "D_PLAYRATE", playrate); // restore orig playrate
+        SetMediaItemInfo_Value(item, "D_LENGTH", item_len);  // restore orig length
+      );             
+      UpdateTimeline();
+    );          
+
 );
 
 
 //==========================================================================================================//
 function MAIN()
-local(item, srate, Threshold_dB, Sensitivity_dB, Retrig_sec)  
+local(item, take, PCM_source, srate, Threshold_dB, Sensitivity_dB, Retrig_sec)  
 (
   item = GetSelectedMediaItem(0, 0);
+  take = GetActiveTake(item);
+  PCM_source = GetMediaItemTake_Source(take);
+  srate = GetMediaSourceSampleRate(PCM_source);
   
-  item ? (
-    //-- Detection settings --
-    srate = 44100;
-    Threshold_dB   = Thresh.val; 
-    Sensitivity_dB = Sens.val;
-    Retrig_sec     = Retrig.val/1000;
-    Main_OnCommand(41844, 0);  // remove old str-marks(All)
-    //------------------------
+  srate ? (
     start = time_precise();
-    DetectTransients(item, srate, Threshold_dB, Sensitivity_dB, Retrig_sec);
-    //ShowConsoleMsg(sprintf(#, "%f \n", time_precise()-start); );
+    Undo_BeginBlock();
+    DetectTransients(item, take, srate);
+    Undo_EndBlock("Create stretch-markers at transients", -1);
+    ShowConsoleMsg(sprintf(#, "%f \n", time_precise()-start); );
   );
 
 );
@@ -223,9 +265,9 @@ function Draw_Sliders()
 function mainloop()
 (
   //-- mouse and modkeys --
-  mouse_cap&1==1 && last_mouse_cap&1==0  ||       //-- L mouse
-  mouse_cap&2==2 && last_mouse_cap&2==0  ||       //-- R mouse
-  mouse_cap&64==64 && last_mouse_cap&64==0 ? (    //-- M mouse
+  (mouse_cap&1==1   && last_mouse_cap&1==0)  ||     //-- L mouse
+  (mouse_cap&2==2   && last_mouse_cap&2==0)  ||     //-- R mouse
+  (mouse_cap&64==64 && last_mouse_cap&64==0) ? (    //-- M mouse
     mouse_ox = mouse_x; mouse_oy = mouse_y;
   ); 
 
