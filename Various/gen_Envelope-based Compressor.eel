@@ -242,7 +242,7 @@ function RebuildVolEnvelope(item, take, srate, VolEnv)
   );
   sel_start = max(sel_start, item_start);         // if sel_start or sel_end out of item
   sel_end   = min(sel_end, item_start+item_len);  // use item_start, item_end respectively
-  sel_end - sel_start < 0 ? MB("Time selection out of item range!", "Note", 0); 
+  //sel_end - sel_start < 0 ? MB("Time selection out of item range!", "Note", 0); 
   
   
   //----------------------------------------------------------------------------
