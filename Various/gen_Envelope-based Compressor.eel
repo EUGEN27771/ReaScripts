@@ -190,30 +190,36 @@ VisEnv.button_New(145,170,125,20,  0.5,0.3,0.3,0.2, "Show Envelope");
 //--- Toggle active, visible vol envelope ------------------------------------------------
 //----------------------------------------------------------------------------------------
 function ToggleActVis_VolEnvelope(mode)
-  local(item, take, VolEnv, BR_Env,
+  local(item_cnt, item_idx, item, take, VolEnv, BR_Env,
         BR_Env, active,visible,armed, inLane,laneHeight, 
         defShape, minVal,maxVal,centerVal, type, faderScaling)   
 (
-  item = GetSelectedMediaItem(0, 0);
-  take = GetActiveTake(item);
-  //-- Get take "Volume" envelope ------
-  VolEnv = GetTakeEnvelopeByName(take,"Volume");
-  //-- Toggle act,vis depend of mode ---
-  VolEnv ? (
-    BR_Env = extension_api("BR_EnvAlloc", VolEnv, 0);
-    extension_api("BR_EnvGetProperties", BR_Env, active,visible,armed, inLane,laneHeight, 
-                  defShape, minVal,maxVal,centerVal, type, faderScaling);
-    mode == "act" ? active  = !active;  // toggle active
-    mode == "vis" ? visible = !visible; // toggle visible
-    extension_api("BR_EnvSetProperties", BR_Env, active,visible,armed, inLane,laneHeight, 
-                  defShape, faderScaling);
-    extension_api("BR_EnvFree", BR_Env, 1);
+  item_cnt = CountSelectedMediaItems(0);
+  item_cnt ? Undo_OnStateChange("Envelope-based compressor");
+  item_idx=0;
+  loop(item_cnt,
+      item = GetSelectedMediaItem(0, item_idx);
+      take = GetActiveTake(item);
+      VolEnv = GetTakeEnvelopeByName(take,"Volume"); // Get take "Volume" envelope
+      
+      //-- Toggle act,vis depend of mode(if VolEnv exists) -----
+      VolEnv ? (
+        BR_Env = extension_api("BR_EnvAlloc", VolEnv, 0);
+        extension_api("BR_EnvGetProperties", BR_Env, active,visible,armed, inLane,laneHeight, 
+                      defShape, minVal,maxVal,centerVal, type, faderScaling);
+        mode == "act" ? active  = !active;  // toggle active
+        mode == "vis" ? visible = !visible; // toggle visible
+        extension_api("BR_EnvSetProperties", BR_Env, active,visible,armed, inLane,laneHeight, 
+                      defShape, faderScaling);
+        extension_api("BR_EnvFree", BR_Env, 1);
+      ) : (
+        //-- Create(if VolEnv no exist) ----
+        Main_OnCommand(NamedCommandLookup("_S&M_TAKEENV1"), 0);
+        VolEnv = GetTakeEnvelopeByName(take,"Volume");
+      );
+      item_idx+=1;
   );
-  //--------- 
-  !VolEnv ? (
-    Main_OnCommand(NamedCommandLookup("_S&M_TAKEENV1"), 0);
-    VolEnv = GetTakeEnvelopeByName(take,"Volume");
-  );
+
 );
 
 //----------------------------------------------------------------------------------------
@@ -244,7 +250,7 @@ function RebuildVolEnvelope(item, take, srate, VolEnv)
     //-- If playrate != 1 ----------------------------------
     playrate  = GetMediaItemTakeInfo_Value(take, "D_PLAYRATE"); // get take orig playrate
     playrate != 1 ? (
-      SetMediaItemTakeInfo_Value(take, "D_PLAYRATE", 1); // faster with playrate = 1
+      SetMediaItemTakeInfo_Value(take, "D_PLAYRATE", 1); // AA work faster with playrate = 1
       SetMediaItemInfo_Value(item, "D_LENGTH", item_len*playrate); // len*playrate 
     );
     //-- Define range(with regard orig playrate) -----------
@@ -338,21 +344,26 @@ function RebuildVolEnvelope(item, take, srate, VolEnv)
 
 //======================================================================================//
 function MAIN()
-local(item, take, PCM_source, srate, VolEnv)  
-(
-  //-- item, take data ---------
-  item = GetSelectedMediaItem(0, 0);
-  take = GetActiveTake(item);
-  PCM_source = GetMediaItemTake_Source(take);
-  srate = GetMediaSourceSampleRate(PCM_source);
-  VolEnv = GetTakeEnvelopeByName(take,"Volume");
-  
-  VolEnv && srate ? (
-    start = time_precise();
-    Undo_OnStateChange_Item(0, "Envelope-based compressor", item);
-    RebuildVolEnvelope(item, take, srate, VolEnv);
-    //ShowConsoleMsg(sprintf(#, "%f \n", time_precise()-start); );
+local(item_cnt, item_idx, item, take, PCM_source, srate, VolEnv)  
+( 
+  //start = time_precise(); // time test
+  item_cnt = CountSelectedMediaItems(0);
+  item_cnt ? Undo_OnStateChange("Envelope-based compressor");
+  item_idx=0;
+  loop(item_cnt,
+      //-- item, take data ---------
+      item = GetSelectedMediaItem(0, item_idx);
+      take = GetActiveTake(item);
+      PCM_source = GetMediaItemTake_Source(take);
+      srate = GetMediaSourceSampleRate(PCM_source);
+      VolEnv = GetTakeEnvelopeByName(take,"Volume");
+      //-- create envelope ---------
+      VolEnv && srate ? (
+        RebuildVolEnvelope(item, take, srate, VolEnv);
+      );
+      item_idx+=1;
   );
+  //ShowConsoleMsg(sprintf(#, "%f \n", time_precise()-start); );
 
 );
 
