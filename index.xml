@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="EUGEN27771-ReaScripts" commit="59b8df3814816a22db2e309dd895a093ae20e1c0">
+<index version="1" name="EUGEN27771-ReaScripts" commit="b643e2f64313e60862175111e663da2c62867855">
   <category name="FX">
     <reapack name="gen_Save Preset for last touched FX.lua" type="script">
       <version name="1.02" author="EUGEN27771" time="2016-06-24T22:51:03Z">
@@ -188,6 +188,9 @@
     <reapack name="gen_Envelope-based Compressor.eel" type="script">
       <version name="1.00" author="EUGEN27771" time="2016-09-27T02:20:53Z">
         <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/9091c4222170b6fa92b5a967e1f6bdde930b004e/Various/gen_Envelope-based%20Compressor.eel</source>
+      </version>
+      <version name="1.01" author="EUGEN27771" time="2016-10-26T16:31:59Z">
+        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/b643e2f64313e60862175111e663da2c62867855/Various/gen_Envelope-based%20Compressor.eel</source>
       </version>
     </reapack>
     <reapack name="gen_Retrospective Record (audio).eel" type="script">
