@@ -1,5 +1,14 @@
+/* 
+   * ReaScript Name:True_Stereo_Test
+   * EEL script for Cockos REAPER
+   * Author: EUGEN27771
+   * Author URI: http://forum.cockos.com/member.php?u=50462
+   * Licence: GPL v3
+   * Version: 1.00
+*/
+
 //----------------------------------------------------------
-function Mono_Stereo_Test(item, take, srate) 
+function True_Stereo_Test(item, take, srate) 
   local(Stereo,item_len,len_smpls,block_size,n_blocks, rest_smples,AA,starttime_sec,samplebuffer,cur_block )
 ( 
   item_len  = GetMediaItemInfo_Value(item, "D_LENGTH");    // item orig length
@@ -50,7 +59,7 @@ local(item, take, PCM_source, srate, VolEnv)
   
   n_chans == 1 ? MB("Its Mono...", "Info", 0) : 
   n_chans == 2 && srate ? (
-    Stereo = Mono_Stereo_Test(item, take, srate);
+    Stereo = True_Stereo_Test(item, take, srate);
     Stereo ? MB("OK, Stereo!", "Info", 0) : MB("Fake?", "Info", 0);
   ) :
   n_chans == 1 ? MB("Multichannel...", "Info", 0)
