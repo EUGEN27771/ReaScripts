@@ -1,0 +1,62 @@
+//----------------------------------------------------------
+function Mono_Stereo_Test(item, take, srate) 
+  local(Stereo,item_len,len_smpls,block_size,n_blocks, rest_smples,AA,starttime_sec,samplebuffer,cur_block )
+( 
+  item_len  = GetMediaItemInfo_Value(item, "D_LENGTH");    // item orig length
+
+  //--------------------------------------------------------
+    len_smpls = floor(item_len*srate) * 2;       // length to samples 
+    block_size = 32768;                          // full block size(samples)
+    n_blocks = floor(len_smpls/block_size);      // number of full blocks
+    rest_smples = len_smpls - block_size*n_blocks;  // rest of samples(incomplete last block)
+
+    //-- Values to norm values -----------------------------
+  
+      //----------------------------------------------------
+      AA = CreateTakeAudioAccessor(take);
+      starttime_sec = 0; // first block start(regard PreComp)  
+      samplebuffer = 0;
+      cur_block = 0;
+
+      // ---------------------------------------------------
+      loop(n_blocks+1,
+          cur_block == n_blocks ? block_size = rest_smples; // last block = rested samples  
+          memset(0,0,block_size); // clear samplebuffer
+          GetAudioAccessorSamples(AA, srate, 2, starttime_sec, block_size, samplebuffer);
+            smpl=0;
+            loop(block_size/2,
+                 samplebuffer[smpl] != samplebuffer[smpl+1] ?  Stereo = 1;
+                 smpl+=2;   
+            );
+          starttime_sec+=block_size/srate/2; // next block starttime
+          cur_block+=1; // block counter
+      );
+    
+      DestroyAudioAccessor(AA);
+  Stereo;
+);
+
+
+
+function MAIN()
+local(item, take, PCM_source, srate, VolEnv)  
+(
+  //-- item, take data ---------
+  item = GetSelectedMediaItem(0, 0);
+  take = GetActiveTake(item);
+  PCM_source = GetMediaItemTake_Source(take);
+  srate = GetMediaSourceSampleRate(PCM_source);
+  n_chans = GetMediaSourceNumChannels(PCM_source);
+  
+  n_chans == 1 ? MB("Its Mono...", "Info", 0) : 
+  n_chans == 2 && srate ? (
+    Stereo = Mono_Stereo_Test(item, take, srate);
+    Stereo ? MB("OK, Stereo!", "Info", 0) : MB("Fake?", "Info", 0);
+  ) :
+  n_chans == 1 ? MB("Multichannel...", "Info", 0)
+
+);
+
+
+//----------------------
+MAIN();
