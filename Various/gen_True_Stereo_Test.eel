@@ -43,7 +43,7 @@ function Stereo_Test(item, take, srate, minDiff_dB )
           GetAudioAccessorSamples(AA, srate, 2, starttime_sec, block_size, buf);
           smpl=0;
           loop(block_size,
-            buf[smpl] - buf[smpl+1] > minDiff ? Stereo = 1;
+            abs(buf[smpl] - buf[smpl+1]) > minDiff ? Stereo = 1;
             smpl+=2;   
           );
               
