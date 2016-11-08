@@ -7,39 +7,47 @@
    * Version: 1.01
 */
 
-//----------------------------------------------------------
-function True_Stereo_Test(item, take, srate) 
-  local(Stereo, item_len,len_smpls, block_size,n_blocks, rest_smples, AA, starttime_sec,buf,cur_block,smpl )
-( 
-  item_len  = GetMediaItemInfo_Value(item, "D_LENGTH");  // item length
+/* Change minDiff_dB if need!!!
+   Set the desired value in dB. 
+*/
 
+minDiff_dB = -60; // diff value(in dB!)
+
+
+//----------------------------------------------------------
+function Stereo_Test(item, take, srate, minDiff_dB ) 
+  local(Stereo, item_len,len_smpls, block_size,n_blocks, rest_smples, AA, starttime_sec,buf,cur_block, smpl, Diff, minDiff)
+( 
+  minDiff = 10^(minDiff_dB/20); // dB to norm value
+  item_len  = GetMediaItemInfo_Value(item, "D_LENGTH");  // item length
   //--------------------------------------------------------
     len_smpls = floor(item_len*srate);             // length to samples 
     block_size = 32768;                            // full block size(samples)
     n_blocks = floor(len_smpls/block_size);        // number of full blocks
     rest_smples = len_smpls - block_size*n_blocks; // rest of samples(incomplete last block)
 
-      //----------------------------------------------------
+      // ---------------------------------------------------
       AA = CreateTakeAudioAccessor(take);
-      starttime_sec = 0; // first block start
+      starttime_sec = 0; // first block start 
       buf = 0;           // buf mem offset
       cur_block = 0;     // cur block
-      Stereo = 0;        // stereo state 
+      Stereo = 0;        // 
 
       // -- Test -------------------------------------------
       while(!Stereo && cur_block <= n_blocks+1)
         (
-          memset(0,0,block_size*2); // clear sample buffer
+          memset(0, 0, block_size*2); // clear sample buffer
           cur_block == n_blocks ? block_size = rest_smples; // last block = rested samples  
-          //-----------------------------
-          GetAudioAccessorSamples(AA, srate, 2, starttime_sec, block_size, buf);
-            smpl=0;
-            loop(block_size,
-                 buf[smpl] != buf[smpl+1] ?  Stereo = 1;
-                 smpl+=2;   
-            );
           
-          //----------------------------- 
+          // -- for each L-R sample ----
+          GetAudioAccessorSamples(AA, srate, 2, starttime_sec, block_size, buf);
+          smpl=0;
+          loop(block_size,
+            buf[smpl] - buf[smpl+1] > minDiff ? Stereo = 1;
+            smpl+=2;   
+          );
+              
+          // --------------------------- 
           starttime_sec+=block_size/srate; // next block starttime
           cur_block+=1; // block counter
       
@@ -51,26 +59,27 @@ function True_Stereo_Test(item, take, srate)
 
 // ---------------------------------------------------
 function MAIN()
-local(item, take, PCM_source, srate, n_chans)  
+local(item, take, PCM_source, srate, n_chans,)  
 (
-  //-- item, take data ---------
+  //-- item, take data -------
   item = GetSelectedMediaItem(0, 0);               // first sel item
   take = GetActiveTake(item);                      // active take
   PCM_source = GetMediaItemTake_Source(take);      // source
   srate = GetMediaSourceSampleRate(PCM_source);    // source srate
   n_chans = GetMediaSourceNumChannels(PCM_source); // source num channels
   
-  //-- native mono --------
+  //-- native mono ------
   n_chans == 1 ? MB("Naitve Mono...", "Info", 0); 
-  //-- test stereo --------
+  //-- native multi -----
+  n_chans > 2 ? MB("Multichannel...", "Info", 0);
+  
+  //-- test stereo ------
   n_chans == 2 && srate ? (
-    True_Stereo_Test(item, take, srate) ? MB("OK, Stereo!", "Info", 0) : MB("Fake?", "Info", 0);
+    Stereo_Test(item, take, srate, minDiff_dB) ? MB("OK, Stereo!", "Info", 0) : MB("Fake Stereo?", "Info", 0);
   );
-  //-- native multi -------
-  n_chans > 2 ? MB("Multichannel...", "Info", 0)
 
 );
 
 
-//----------------------
+//-----------------------
 MAIN();
