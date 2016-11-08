@@ -59,7 +59,7 @@ function Stereo_Test(item, take, srate, minDiff_dB )
 
 // ---------------------------------------------------
 function MAIN()
-local(item, take, PCM_source, srate, n_chans,)  
+local(item, take, PCM_source, srate, n_chans )  
 (
   //-- item, take data -------
   item = GetSelectedMediaItem(0, 0);               // first sel item
@@ -68,14 +68,15 @@ local(item, take, PCM_source, srate, n_chans,)
   srate = GetMediaSourceSampleRate(PCM_source);    // source srate
   n_chans = GetMediaSourceNumChannels(PCM_source); // source num channels
   
-  //-- native mono ------
-  n_chans == 1 ? MB("Naitve Mono...", "Info", 0); 
-  //-- native multi -----
-  n_chans > 2 ? MB("Multichannel...", "Info", 0);
-  
-  //-- test stereo ------
-  n_chans == 2 && srate ? (
-    Stereo_Test(item, take, srate, minDiff_dB) ? MB("OK, Stereo!", "Info", 0) : MB("Fake Stereo?", "Info", 0);
+  srate ? (
+    //-- native mono ------ 
+    n_chans == 1 ? MB("Naitve Mono...", "Info", 0);
+    //-- native multi -----
+    n_chans > 2 ? MB("Multichannel...", "Info", 0);
+    //-- test stereo ------
+    n_chans == 2 ? (
+      Stereo_Test(item, take, srate, minDiff_dB) ? MB("OK, Stereo!", "Info", 0) : MB("Fake Stereo?", "Info", 0);
+    );
   );
 
 );
