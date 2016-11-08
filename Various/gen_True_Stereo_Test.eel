@@ -4,65 +4,70 @@
    * Author: EUGEN27771
    * Author URI: http://forum.cockos.com/member.php?u=50462
    * Licence: GPL v3
-   * Version: 1.00
+   * Version: 1.01
 */
 
 //----------------------------------------------------------
 function True_Stereo_Test(item, take, srate) 
-  local(Stereo,item_len,len_smpls,block_size,n_blocks, rest_smples,AA,starttime_sec,samplebuffer,cur_block )
+  local(Stereo, item_len,len_smpls, block_size,n_blocks, rest_smples, AA, starttime_sec,buf,cur_block,smpl )
 ( 
-  item_len  = GetMediaItemInfo_Value(item, "D_LENGTH");    // item orig length
+  item_len  = GetMediaItemInfo_Value(item, "D_LENGTH");  // item length
 
   //--------------------------------------------------------
-    len_smpls = floor(item_len*srate) * 2;       // length to samples 
-    block_size = 32768;                          // full block size(samples)
-    n_blocks = floor(len_smpls/block_size);      // number of full blocks
-    rest_smples = len_smpls - block_size*n_blocks;  // rest of samples(incomplete last block)
+    len_smpls = floor(item_len*srate);             // length to samples 
+    block_size = 32768;                            // full block size(samples)
+    n_blocks = floor(len_smpls/block_size);        // number of full blocks
+    rest_smples = len_smpls - block_size*n_blocks; // rest of samples(incomplete last block)
 
-    //-- Values to norm values -----------------------------
-  
       //----------------------------------------------------
       AA = CreateTakeAudioAccessor(take);
       starttime_sec = 0; // first block start(regard PreComp)  
-      samplebuffer = 0;
-      cur_block = 0;
+      buf = 0;           // buf mem offset
+      cur_block = 0;     // cur block
+      Stereo = 0;        // stereo state 
 
-      // ---------------------------------------------------
-      loop(n_blocks+1,
+      // -- Test -------------------------------------------
+      while(!Stereo && cur_block <= n_blocks+1)
+        (
+          memset(0,0,block_size*2); // clear sample buffer
           cur_block == n_blocks ? block_size = rest_smples; // last block = rested samples  
-          memset(0,0,block_size); // clear samplebuffer
-          GetAudioAccessorSamples(AA, srate, 2, starttime_sec, block_size, samplebuffer);
+          //-----------------------------
+          GetAudioAccessorSamples(AA, srate, 2, starttime_sec, block_size, buf);
             smpl=0;
-            loop(block_size/2,
-                 samplebuffer[smpl] != samplebuffer[smpl+1] ?  Stereo = 1;
+            loop(block_size,
+                 buf[smpl] != buf[smpl+1] ?  Stereo = 1;
                  smpl+=2;   
             );
-          starttime_sec+=block_size/srate/2; // next block starttime
+          
+          //----------------------------- 
+          starttime_sec+=block_size/srate; // next block starttime
           cur_block+=1; // block counter
+      
       );
     
-      DestroyAudioAccessor(AA);
+    DestroyAudioAccessor(AA);
   Stereo;
 );
 
-
-
+// ---------------------------------------------------
 function MAIN()
-local(item, take, PCM_source, srate, VolEnv)  
+local(item, take, PCM_source, srate, n_chans)  
 (
   //-- item, take data ---------
-  item = GetSelectedMediaItem(0, 0);
-  take = GetActiveTake(item);
-  PCM_source = GetMediaItemTake_Source(take);
-  srate = GetMediaSourceSampleRate(PCM_source);
-  n_chans = GetMediaSourceNumChannels(PCM_source);
+  item = GetSelectedMediaItem(0, 0);               // first sel item
+  take = GetActiveTake(item);                      // active take
+  PCM_source = GetMediaItemTake_Source(take);      // source
+  srate = GetMediaSourceSampleRate(PCM_source);    // source srate
+  n_chans = GetMediaSourceNumChannels(PCM_source); // source num channels
   
-  n_chans == 1 ? MB("Its Mono...", "Info", 0) : 
+  //-- native mono --------
+  n_chans == 1 ? MB("Naitve Mono...", "Info", 0); 
+  //-- test stereo --------
   n_chans == 2 && srate ? (
-    Stereo = True_Stereo_Test(item, take, srate);
-    Stereo ? MB("OK, Stereo!", "Info", 0) : MB("Fake?", "Info", 0);
-  ) :
-  n_chans == 1 ? MB("Multichannel...", "Info", 0)
+    True_Stereo_Test(item, take, srate) ? MB("OK, Stereo!", "Info", 0) : MB("Fake?", "Info", 0);
+  );
+  //-- native multi -------
+  n_chans > 2 ? MB("Multichannel...", "Info", 0)
 
 );
 
