@@ -21,7 +21,7 @@ function True_Stereo_Test(item, take, srate)
 
       //----------------------------------------------------
       AA = CreateTakeAudioAccessor(take);
-      starttime_sec = 0; // first block start(regard PreComp)  
+      starttime_sec = 0; // first block start
       buf = 0;           // buf mem offset
       cur_block = 0;     // cur block
       Stereo = 0;        // stereo state 
