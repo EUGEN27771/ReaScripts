@@ -150,7 +150,8 @@ function slider_draw()
   gfx_x = x+5; gfx_y = y+(h-lbl_h)/2;
   gfx_drawstr(lbl);
   //-- draw value ---------
-  val = sprintf(#, "%.2f", this.val);
+  //val = sprintf(#, "%.2f", this.val);
+  val = sprintf(#, "%d", this.val);
   strcat(val, this.val_unit); 
   gfx_measurestr(val, val_w, val_h);
   gfx_x = x+w-val_w-5; gfx_y = y+(h-val_h)/2;
@@ -165,11 +166,11 @@ function slider_draw()
 
 //-- Create Sliders --------------------
 //-- args = (x,y,w,h, r,g,b,a, lbl, val,min_val,max_val,val_unit)
-Diff_sldr.slider_New(10,10,240,18,   0.4,0.4,0.4,0.2, "Difference threshold ",   -96, -150,  -60, " dB" );
+Diff_sldr.slider_New(10,10,240,18,   0.4,0.4,0.4,0.2, "Difference threshold ",   -80, -150,  -60, " dB" );
 
 //-- Create Buttons --------------------
 //-- args = (x,y,w,h, r,g,b,a, lbl)
-Start_btn.button_New(10,45,240,25,   0.5,0.5,0.5,0.2, "Run Stereo Test");
+Start_btn.button_New(10,45,240,25,   0.5,0.5,0.5,0.2, "Set false-stereo to mono");
 
 //======================================================================================//
 
@@ -279,8 +280,9 @@ function mainloop()
   last_mouse_cap = mouse_cap;
   last_x = mouse_x; last_y = mouse_y;
   char = gfx_getchar();
-  char==32 ? Main_OnCommand(40044, 0); //-- play
-  char >= 0 ? defer("mainloop();");    //-- defer
+  char==26 ? Main_OnCommandEx(40029, 0, 0); //-- undo
+  char==32 ? Main_OnCommandEx(40044, 0, 0); //-- play
+  char >= 0 ? defer("mainloop();");  //-- defer
   gfx_update();
 );
 
@@ -289,7 +291,7 @@ function Init()
   local(width, height, dockstate, xpos, ypos)
 ( //-- window -----------
   width = 260; height = 80; dockstate = 0; xpos = 650; ypos = 350;
-  gfx_init("Stereo Test",width,height,dockstate,xpos,ypos);
+  gfx_init("True Stereo Items Test",width,height,dockstate,xpos,ypos);
   
   gfx_clear = 20 + 20*256 + 20*65536;
   //-- Init mouse -------
