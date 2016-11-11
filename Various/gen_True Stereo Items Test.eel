@@ -119,6 +119,7 @@ function slider_set_value()
    
   this.norm_val = min( max(norm_val,0), 1 ); // verify and set value
   this.val = this.min_val + (this.max_val-this.min_val) * this.norm_val;
+  this.val = floor(this.val); // floor for this script only
 ); 
 
 //-- Draw slider -------------
@@ -151,7 +152,7 @@ function slider_draw()
   gfx_drawstr(lbl);
   //-- draw value ---------
   //val = sprintf(#, "%.2f", this.val);
-  val = sprintf(#, "%d", this.val);
+  val = sprintf(#, "%d", this.val); // "%d" for this script only
   strcat(val, this.val_unit); 
   gfx_measurestr(val, val_w, val_h);
   gfx_x = x+w-val_w-5; gfx_y = y+(h-val_h)/2;
