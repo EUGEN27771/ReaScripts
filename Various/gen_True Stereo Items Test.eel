@@ -4,7 +4,7 @@
    * Author: EUGEN27771
    * Author URI: http://forum.cockos.com/member.php?u=50462
    * Licence: GPL v3
-   * Version: 1.02
+   * Version: 1.03
 */
 
 
@@ -229,22 +229,29 @@ function RunTest()
   i = 0;
   loop(item_cnt, 
     //-- item, take data -------
-    item = GetSelectedMediaItem(0, i);         // get sel item
-    take = GetActiveTake(item);                      // active take
-    PCM_source = GetMediaItemTake_Source(take);      // source
-    srate = GetMediaSourceSampleRate(PCM_source);    // source srate(and MIDI ret zero)
-    n_chans = GetMediaSourceNumChannels(PCM_source); // source num channels
+    item = GetSelectedMediaItem(0, i);            // get sel item
+    take = GetActiveTake(item);                   // active take
+    PCM_source = GetMediaItemTake_Source(take);   // source
+    srate = GetMediaSourceSampleRate(PCM_source); // source srate(MIDI ret zero)
       
       //------------------------
       srate ? (
-        n_chans == 2 ? (
+        n_chans = GetMediaSourceNumChannels(PCM_source);            // source num channels
+        chan_mode = GetMediaItemTakeInfo_Value(take, "I_CHANMODE"); // current chan mode
+        //----------------------
+        n_chans == 2 && chan_mode == 0 ? (
+          mute_state = GetMediaItemInfo_Value(item, "B_MUTE");    // item mute_state
+          mute_state ? SetMediaItemInfo_Value(item, "B_MUTE", 0); // unmute for test if muted
           !Stereo_Test(item, take, srate, minDiff) ? (
-            SetMediaItemTakeInfo_Value(take, "I_CHANMODE", 3); // set to "mono (left)"
+            SetMediaItemTakeInfo_Value(take, "I_CHANMODE", 3);    // set to "mono (left)"
             UpdateItemInProject(item);
           ); 
+          mute_state ? SetMediaItemInfo_Value(item, "B_MUTE", 1); // restore orig mute_state
         );
+      
       );
       //------------------------
+    
     i+=1;
   );
   
