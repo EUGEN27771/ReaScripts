@@ -255,7 +255,7 @@ function RunTest()
     i+=1;
   );
   
-  Undo_EndBlock("Stereo_Test", -1);
+  Undo_EndBlock("True Stereo Takes Test", -1);
 
 );
 // ---------------------------------------------------------
@@ -299,7 +299,7 @@ function Init()
   local(width, height, dockstate, xpos, ypos)
 ( //-- window -----------
   width = 260; height = 80; dockstate = 0; xpos = 650; ypos = 350;
-  gfx_init("True Stereo Items Test",width,height,dockstate,xpos,ypos);
+  gfx_init("True Stereo Takes Test",width,height,dockstate,xpos,ypos);
   
   gfx_clear = 20 + 20*256 + 20*65536;
   //-- Init mouse -------
