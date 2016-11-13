@@ -91,9 +91,9 @@ function button_draw()
   
   //-- draw body, frame ---
   gfx_set(r,g,b,a);
-  gfx_rect(x,y,w,h, 1);
+  gfx_rect(x,y,w-1,h-1, 1);
   gfx_rect(x,y,w,h, 0);           // frame1
-  gfx_roundrect(x,y,w-1,h-1,3,1); // frame2  
+  //gfx_roundrect(x,y,w-1,h-1,3,1); // frame2  
   //-- draw label ---------
   gfx_set(0.9,0.8,0.5,0.9);
   gfx_measurestr(lbl, lbl_w, lbl_h);
@@ -220,7 +220,7 @@ function Stereo_Test(item, take, srate, minDiff )
 
 // ---------------------------------------------------------
 function RunTest()
-  local(minDiff, item_cnt, i, item, take, PCM_source, srate, n_chans )  
+  local(minDiff, item_cnt, i, item, take, PCM_source, srate, n_chans,chan_mode, mute_state)  
 (
   minDiff = 10^(Diff_sldr.val/20); // dB to norm value
   item_cnt = CountSelectedMediaItems(0);
