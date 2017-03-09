@@ -1,0 +1,595 @@
+/* 
+   * ReaScript Name:Envelope-based Deesser
+   * EEL script for Cockos REAPER
+   * Author: EUGEN27771
+   * Author URI: http://forum.cockos.com/member.php?u=50462
+   * Licence: GPL v3
+   * Version: 1.00
+*/
+
+//-- Script creates Envelope, based on the sibilance and compress it
+
+/*----------------------------------------------------------
+=== Filter, Comp, Gate etc functions =======================
+----------------------------------------------------------*/
+// -- DB2VAL - VAL2DB(from SDK) ------------------
+function DB2VAL(x)
+(
+  exp((x)*0.11512925464970228420089957273422);
+);
+//----------------------------
+function VAL2DB(x)
+  local(v)
+(
+  x < 0.0000000298023223876953125 ? (
+    -150; 
+  ) : (
+    v = log(x)*8.6858896380650365530225783783321;
+    v < -150 ? -150 : v;
+  );
+);
+
+// -- Filter -------------------------------------
+function FilterB.SetValues(cutoffFreq, samplerate)
+  local(sqr2, c, c2, csqr2, d)
+  instance(ampIn0, ampIn1, ampIn2, ampOut1, ampOut2)    
+(
+  // samplerate can be different from the global srate if need
+  sqr2 = 1.414213562;
+  c = tan(($pi/samplerate) * cutoffFreq );
+  c2 = c * c;
+  csqr2 = sqr2 * c;
+  d = (c2 + csqr2 + 1);
+  
+  ampIn0 = 1 / d;
+  ampIn1 = -(ampIn0 + ampIn0);
+  ampIn2 = ampIn0;
+  
+  ampOut1 = (2 * (c2 - 1)) / d;
+  ampOut2 = (1 - csqr2 + c2) / d;
+);
+//----------------------------
+function FilterB.Apply(in)
+  instance(ampIn0, ampIn1, ampIn2, ampOut1, ampOut2, dlyIn1, dlyIn2, dlyOut1, dlyOut2, out)
+(
+  out = (ampIn0 * in) + (ampIn1 * dlyIn1) + (ampIn2 * dlyIn2) - (ampOut1 * dlyOut1) - (ampOut2 * dlyOut2);
+  
+  dlyOut2 = dlyOut1;
+  dlyOut1 = out;
+  dlyIn2 = dlyIn1;
+  dlyIn1 = in;
+  out;
+);
+
+// -- Gate ---------------------------------------
+function GateD.SetValues(attThresh_dB, hysteresis_dB, hold_ms, samplerate)
+  instance(attThresh, relThresh, hold)    
+( 
+  // samplerate can be different from the global srate if need
+  attThresh  = 10^(attThresh_dB/20);
+  relThresh  = 10^((attThresh_dB + hysteresis_dB)/20);
+  hold = samplerate * hold_ms/1000;
+);
+//----------------------------
+function GateD.Apply(in)
+  instance(attThresh, relThresh, hold, hold_cnt, trig)
+(
+  in > attThresh ? (
+    trig = 1;
+    hold_cnt = 0;
+  ) : ( 
+     hold_cnt > hold && in < relThresh ? trig = 0;
+     hold_cnt+=1;
+  );
+  trig;
+);
+
+// -- Env follower -------------------------------
+function EnvFollower.SetValues(attack_ms, release_ms, samplerate)
+(
+  // samplerate can be different from the global srate if need
+  // -- ga, gr coeff --
+  this.ga = exp(-1/(samplerate*attack_ms/1000));
+  this.gr = exp(-1/(samplerate*release_ms/1000)); 
+);
+//----------------------------
+function EnvFollower.Apply(in)
+  instance(ga, gr, out)
+(
+  out < in ? out = in + ga*(out-in) : out = in + gr*(out-in); 
+);
+
+// -- Compressor ---------------------------------
+function CompD.SetValues(thresh_dB, ratio)
+(
+  this.thresh_dB = thresh_dB;
+  this.thresh = 10^(thresh_dB/20);
+  this.ratio = ratio;
+);
+//----------------------------
+function CompD.Apply(in) // -- dB var
+  instance(thresh_dB, thresh, ratio, out_dB, out)
+(
+  in > thresh ? (
+    out_dB = ratio * (thresh_dB - VAL2DB(in));
+    out = DB2VAL(out_dB);
+  ) : (
+    out_dB = 0;
+    out = 1;
+  ); 
+);
+
+/*----------------------------------------------------------
+=== New button, slider functions ===========================
+----------------------------------------------------------*/
+//-- New button function -------
+function button_New(x,y,w,h, r,g,b,a, lbl)
+(
+  this.x = x; this.y = y; this.w = w; this.h = h; // coord
+  this.r = r; this.g = g; this.b = b; this.a = a; // color
+  this.lbl = lbl;
+);
+
+//-- New slider function -------
+function slider_New(x,y,w,h, r,g,b,a, lbl, val,min_val,max_val)
+(
+  this.x = x; this.y = y; this.w = w; this.h = h; // coord
+  this.r = r; this.g = g; this.b = b; this.a = a; // color
+  this.lbl = lbl;
+  this.val = val;
+  this.min_val = min_val; 
+  this.max_val = max_val;
+  this.norm_val = (val - min_val)/(max_val - min_val); // norm value
+);
+
+
+/*----------------------------------------------------------
+=== Simple Get mouse functions =============================
+----------------------------------------------------------*/
+//------------------
+function pointIN(p_x, p_y)
+  instance(x,y,w,h)
+( // if point in obj area
+  p_x >= x && p_x <= x+w && p_y >= y && p_y <= y+h;
+);
+
+function mouseIN()
+( // if mouse in obj area
+  !(mouse_cap&1) && this.pointIN(mouse_x, mouse_y);
+);
+
+//------------------
+function mouseDown()
+( // if mouse has been pressed in obj area
+  mouse_cap&1 && this.pointIN(mouse_ox,mouse_oy);
+);
+
+function mouseUp()
+( // if mouse released(anywhere) and has been pressed in obj area
+  last_mouse_cap&1 && !(mouse_cap&1) && this.pointIN(mouse_ox,mouse_oy);
+);
+
+function mouseClick()
+( // if mouse released in obj area and has been pressed in obj area
+  last_mouse_cap&1 && !(mouse_cap&1) && 
+  this.pointIN(mouse_x, mouse_y) && this.pointIN(mouse_ox,mouse_oy);
+);
+//------------------
+function mouseR_Down()
+( // if mouse R has been pressed in obj area
+  mouse_cap&2 && this.pointIN(mouse_ox,mouse_oy);
+);
+
+function mouseM_Down()
+( // if mouse M has been pressed in obj area
+  mouse_cap&64 && this.pointIN(mouse_ox,mouse_oy);
+);
+
+
+/*----------------------------------------------------------
+=== SLIDER =================================================
+----------------------------------------------------------*/
+//-- Set slider value ------------------
+function slider_set_value()
+  instance(x,y,w,h, val,min_val,max_val, norm_val)
+  local(nv, K )
+(
+  K = 10; // K = coeff(when Ctrl pressed)
+  Ctrl ? (
+    nv = norm_val + (mouse_x-last_x)/(w*K);
+  ) : (
+    nv = (mouse_x-x)/w;
+  );
+  
+  nv != norm_val ? (
+    norm_val = min( max(nv, 0), 1 ); // verify and set values
+    val = min_val + (max_val-min_val)*norm_val;
+    this.isChanged = 1;
+  );
+); 
+
+//-- Draw slider -----------------------
+function slider_draw()
+  instance(x,y,w,h, r,g,b,a, lbl, val, norm_val)
+  local(aa, val_str, str_w, str_h)
+  
+( 
+  aa = a;
+  this.isChanged = this.isReleased = 0; // reset 
+  this.mouseIN() ? aa = a + 0.1;
+  this.mouseDown() ? (
+    aa = a + 0.2;
+    this.slider_set_value();
+  );
+  
+  this.mouseUp() ? this.isReleased = 1;
+  
+  //-- draw body, frame ------
+  gfx_set(r,g,b,aa);
+  gfx_rect(x,y,w,h, 0);
+  gfx_rect(x, y, w*norm_val, h, 1);
+  //-- draw label ------------
+  gfx_set(0.9,0.8,0.5,0.9);
+  gfx_measurestr(lbl, str_w, str_h);
+  gfx_x = x + 5; gfx_y = y + (h-str_h)/2;
+  gfx_drawstr(lbl);
+  //-- draw value ------------
+  val_str = sprintf(#, "%.2f", val); 
+  gfx_measurestr(val_str, str_w, str_h);
+  gfx_x = x - 5 + w - str_w; gfx_y = y + (h-str_h)/2;
+  gfx_drawstr(val_str);
+);
+
+
+/*----------------------------------------------------------
+=== BUTTON =================================================
+----------------------------------------------------------*/
+//-- Draw button -----------------------
+function button_draw()
+  instance(x,y,w,h, r,g,b,a, lbl)
+  local(aa, str_w, str_h)
+(   
+  aa = a;
+  this.mouseIN() ? aa = a + 0.1;
+  this.mouseDown() ? aa = a + 0.2; 
+  this.mouseClick() ? this.isClicked = 1 : this.isClicked = 0;
+  
+  //-- draw body, frame ------
+  gfx_set(r,g,b,aa);
+  gfx_rect(x,y,w,h, 1);
+  gfx_rect(x,y,w,h, 0); // frame
+  //-- draw label ------------
+  gfx_set(0.9,0.8,0.5,0.9);
+  gfx_measurestr(lbl, str_w, str_h);
+  gfx_x = x + (w-str_w)/2; gfx_y = y + (h-str_h)/2;
+  gfx_drawstr(lbl);
+
+);
+
+
+/*----------------------------------------------------------------------------------------
+=== Create controls ======================================================================
+----------------------------------------------------------------------------------------*/
+
+//-- Create Sliders --------------------
+//-- args = (x,y,w,h, r,g,b,a, lbl, val,min_val,max_val)
+Thresh.slider_New(10,10,260,18,    0.5,0.3,0.3,0.2, "Threshold dB",    -24,  -48,     0 );
+HPFreq.slider_New(10,35,260,18,    0.4,0.5,0.5,0.2, "HP Freq Hz",     6000, 2000, 20000 );
+PreOpen.slider_New(10,60,260,18,   0.4,0.5,0.5,0.2, "Pre-Open ms",        5,   0,    20 );
+Interval.slider_New(10,85,260,18,  0.4,0.5,0.5,0.2, "Interval ms",       5,    1,    10 );
+Compress.slider_New(10,110,260,18, 0.3,0.4,0.5,0.2, "Compression %",    40,    0,   100 );
+
+//-- Create Buttons --------------------
+//-- args = (x,y,w,h, r,g,b,a, lbl)
+ActEnv.button_New(10,170,125,20,   0.5,0.3,0.3,0.2, "Activate Envelope");
+VisEnv.button_New(145,170,125,20,  0.5,0.3,0.3,0.2, "Show Envelope");
+
+//======================================================================================//
+
+
+//----------------------------------------------------------------------------------------
+//--- Toggle active, visible vol envelope ------------------------------------------------
+//----------------------------------------------------------------------------------------
+function ToggleActVis_VolEnvelope(mode)
+  local(item_cnt, item_idx, item, take, VolEnv, BR_Env,
+        BR_Env, active,visible,armed, inLane,laneHeight, 
+        defShape, minVal,maxVal,centerVal, type, faderScaling)   
+(
+  item_cnt = CountSelectedMediaItems(0);
+  item_cnt ? Undo_OnStateChange("Envelope-based Deesser");
+  item_idx=0;
+  loop(item_cnt,
+      item = GetSelectedMediaItem(0, item_idx);
+      take = GetActiveTake(item);
+      VolEnv = GetTakeEnvelopeByName(take,"Volume"); // Get take "Volume" envelope
+      
+      //-- Toggle act,vis depend of mode(if VolEnv exists) -----
+      VolEnv ? (
+        BR_Env = extension_api("BR_EnvAlloc", VolEnv, 0);
+        extension_api("BR_EnvGetProperties", BR_Env, active,visible,armed, inLane,laneHeight, 
+                      defShape, minVal,maxVal,centerVal, type, faderScaling);
+        mode == "act" ? active  = !active;  // toggle active
+        mode == "vis" ? visible = !visible; // toggle visible
+        extension_api("BR_EnvSetProperties", BR_Env, active,visible,armed, inLane,laneHeight, 
+                      defShape, faderScaling);
+        extension_api("BR_EnvFree", BR_Env, 1);
+      ) : (
+        //-- Create(if VolEnv no exist) ----
+        Main_OnCommand(NamedCommandLookup("_S&M_TAKEENV1"), 0);
+        VolEnv = GetTakeEnvelopeByName(take,"Volume");
+      );
+      item_idx+=1;
+  );
+
+);
+
+//----------------------------------------------------------------------------------------
+//--- Rebuild volume envelope ------------------------------------------------------------
+//----------------------------------------------------------------------------------------
+
+function CreateEnvelope(VolEnv, range_start, range_len, srate, envbuf, pnt_cnt)
+  local(PreOpen, env_mode, shape,tens,sel,nosort, val,val1, rs_val,re_val, i, pos)     
+(
+  PreOpen = PreOpen.val/1000;
+  //--------------------------
+  env_mode = GetEnvelopeScalingMode(VolEnv);     // get VolEnv scaling mode
+  val1 = ScaleToEnvelopeMode(env_mode, 1);       // Scaled  val=1
+  //shape = 2; tens = 0; sel = 0; nosort = 1;    // def for new deess points 1
+  shape = 0; tens = 0; sel = 0; nosort = 1;      // def for new deess points 2
+  
+  //-- Del Old points, Ins points at edges(use cur values) ------
+  Envelope_Evaluate(VolEnv, range_start, srate, 0, rs_val);           // get env val at start
+  Envelope_Evaluate(VolEnv, range_start+range_len, srate, 0, re_val); // get env val at end
+  DeleteEnvelopePointRange(VolEnv, range_start-0.0001, range_start+range_len+0.0001); // Del Old points 
+  //--------------------------
+  InsertEnvelopePoint(VolEnv, range_start, rs_val, 0, 0, 0, 1);           // Insert point=curval at start
+  InsertEnvelopePoint(VolEnv, range_start, val1, 0, 0, 0, 1);             // Insert point=1 at start
+  InsertEnvelopePoint(VolEnv, range_start+range_len, val1, 0, 0, 0, 1);   // Insert point=1 at end
+  InsertEnvelopePoint(VolEnv, range_start+range_len, re_val, 0, 0, 0, 1); // Insert point=curval at end
+  
+  //--------------------------
+  i = 0;
+  while(envbuf[i] <= range_start + PreOpen && i < pnt_cnt)( 
+    i+=2; pnt_cnt-=2; // Если точки выходят за range_start!
+  );
+  //--------------------------
+
+  loop(pnt_cnt*0.5,
+    pos = envbuf[i] - PreOpen;
+    val = ScaleToEnvelopeMode(env_mode,  envbuf[i+1]);   // Scale point val
+    // -----------------------
+    InsertEnvelopePoint(VolEnv, pos, val, shape, tens, sel, nosort); // Insert point        
+    i+=2;  
+  );
+);
+
+//----------------------------------------------------------------------------------------
+//--- Rebuild volume envelope ------------------------------------------------------------
+//----------------------------------------------------------------------------------------
+function RebuildVolEnvelope(item, take, srate, VolEnv)
+  local(item_start, item_len, sel_start, sel_end, playrate, range_start, range_len, range_len_smpls, 
+        block_size, n_blocks, rest_smples, AA, starttime_sec, samplebuf, smpl, cur_block, envbuf,
+        take_vol, item_vol, vol_offs, 
+        trig, last_trig, input, fltr_out, env_out, comp_out, pnt_cnt, interval, interval_cnt, oo_offs)
+( 
+  item_start = GetMediaItemInfo_Value(item, "D_POSITION"); // item position
+  item_len  = GetMediaItemInfo_Value(item, "D_LENGTH");    // item orig length
+  GetSet_LoopTimeRange(0, 0, sel_start, sel_end, 0);       // get time selection
+  !(sel_end - sel_start) ? (       // if no selection, then
+    sel_start = item_start;        // use item start
+    sel_end = item_start+item_len; // use item end
+  );
+  sel_start = max(sel_start, item_start);         // if sel_start or sel_end out of item, then
+  sel_end   = min(sel_end, item_start+item_len);  // use item_start, item_end respectively
+  //sel_end - sel_start < 0 ? MB("Time selection out of item range!", "Note", 0); 
+  
+  
+  //----------------------------------------------------------------------------
+  sel_end - sel_start > 0 ? ( 
+    //-- If playrate != 1 ----------------------------------
+    playrate  = GetMediaItemTakeInfo_Value(take, "D_PLAYRATE"); // get take orig playrate
+    playrate != 1 ? (
+      SetMediaItemTakeInfo_Value(take, "D_PLAYRATE", 1); // AA work faster with playrate = 1
+      SetMediaItemInfo_Value(item, "D_LENGTH", item_len*playrate); // len*playrate 
+    );
+    //-- Define range(with regard orig playrate) -----------
+    range_start = (sel_start-item_start)*playrate;  // range start
+    range_len = (sel_end-sel_start)*playrate;       // range length
+    range_len_smpls = floor(range_len*srate);       // range length to samples
+    block_size = 65536;                                   // full block size(samples)
+    n_blocks = floor(range_len_smpls/block_size);         // number of full blocks
+    rest_smples = range_len_smpls - block_size*n_blocks;  // rest of samples(incomplete last block)
+    
+    //-- Set Filter and Gate Values from sliders -----------
+    take_vol = GetMediaItemTakeInfo_Value(take, "D_VOL"); // regard take volume
+    item_vol = GetMediaItemInfo_Value(item, "D_VOL");     // regard item volume
+    vol_offs = VAL2DB(take_vol*item_vol);  // offset is subtracted from the comp threshold
+    FilterB.SetValues(HPFreq.val, srate);
+    EnvFollower.SetValues(0.2, 40, srate); // att-rel - constants(ms), can be changed
+    CompD.SetValues(Thresh.val-vol_offs, Compress.val/100);
+      
+      //----------------------------------------------------
+      AA = CreateTakeAudioAccessor(take);
+      starttime_sec = range_start; // first block start
+      samplebuf = 0;       // buffer for accessor samples
+      envbuf = block_size; // buffer for envelope points
+      cur_block = 0;
+      trig = last_trig = 0;
+      pnt_cnt = 0; 
+      //-----------
+      interval = ceil(Interval.val/1000 * srate);
+      // -- Audio processing, search sibilance -------------
+      loop(n_blocks+1,
+          cur_block == n_blocks ? block_size = rest_smples; // last block = rested samples  
+          //memset(0,0,block_size); // clear samplebuffer - Можно не чистить, но все же...???
+          GetAudioAccessorSamples(AA, srate, 1, starttime_sec, block_size, samplebuf); // get as mono
+            smpl=0;
+            loop(block_size,
+                input = samplebuf[smpl];
+                fltr_out = FilterB.Apply(input);
+                env_out = EnvFollower.Apply(abs(fltr_out));
+                comp_out = CompD.Apply(env_out);
+      
+                //-- Add comp point ---------
+                comp_out < 1 ? (
+                  trig = 1;
+                  interval_cnt > interval ? (
+                    envbuf[pnt_cnt] = starttime_sec + smpl/srate; // position
+                    envbuf[pnt_cnt+1] = comp_out; // value
+                    pnt_cnt+=2;
+                    interval_cnt = 0;
+                  );
+                  interval_cnt+=1;
+                ) : (
+                  trig = 0;
+                );
+                
+                //-- Add On-Off point -------
+                trig != last_trig ? (
+                  trig ? (oo_offs = -8; interval_cnt = interval+1;) : oo_offs = 8;
+                  envbuf[pnt_cnt] = starttime_sec + (smpl+oo_offs)/srate; // position
+                  envbuf[pnt_cnt+1] = 1; // value
+                  pnt_cnt+=2;
+                  last_trig = trig;
+                );
+                
+                //---------------------------               
+                smpl+=1;   
+            );
+          starttime_sec+=block_size/srate; // next block starttime
+          cur_block+=1; // block counter
+      );
+      
+      DestroyAudioAccessor(AA);
+      //----------------------------------------------------
+      CreateEnvelope(VolEnv, range_start, range_len, srate, envbuf, pnt_cnt); // Create Envelope
+      //----------------------------------------------------
+      playrate != 1 ? (
+        SetMediaItemTakeInfo_Value(take, "D_PLAYRATE", playrate); // restore orig playrate
+        SetMediaItemInfo_Value(item, "D_LENGTH", item_len);  // restore orig length
+      );          
+      Envelope_SortPoints(VolEnv);
+      UpdateTimeline();
+      UpdateArrange();          
+  );  
+
+);
+
+
+//======================================================================================//
+function MAIN()
+local(item_cnt, item_idx, item, take, PCM_source, srate, VolEnv)  
+( 
+  start_time = time_precise(); // start time test
+  //--------------------------  
+  item_cnt = CountSelectedMediaItems(0);
+  item_idx = 0;
+  loop(item_cnt,
+      //-- item, take data -------------
+      item = GetSelectedMediaItem(0, item_idx);
+      take = GetActiveTake(item);
+      PCM_source = GetMediaItemTake_Source(take);
+      srate = GetMediaSourceSampleRate(PCM_source);
+      VolEnv = GetTakeEnvelopeByName(take,"Volume");
+      //-- rebuild - create envelope ---
+      VolEnv && srate ? (
+        RebuildVolEnvelope(item, take, srate, VolEnv);
+      );
+      item_idx+=1;
+  );
+  //--------------------------
+  process_time  = time_precise() - start_time; // end time test
+  //ShowConsoleMsg(sprintf(#, "%f \n", time_precise()-start_time); );
+
+);
+
+
+//----------------------------------------------------------
+function Draw_Controls()
+(
+  //-- sliders ---------------
+  Thresh.slider_draw();
+  HPFreq.slider_draw();
+  PreOpen.slider_draw();
+  Compress.slider_draw();
+  Interval.slider_draw();
+  //--------------------------
+  Thresh.isReleased || HPFreq.isReleased ||
+  PreOpen.isReleased || Compress.isReleased ||
+  Interval.isReleased ? (
+    Undo_OnStateChange("Envelope-based Deesser");
+    RunMain = 1;
+  );
+  //-- TEST! -----------------
+  /*range_len < 60 ? (
+    Thresh.isChanged || HPFreq.isChanged ||
+    PreOpen.isChanged || Compress.isChanged ||
+    Interval.isChanged ? RunMain = 1;
+  );*/ 
+  
+  //-- buttons ---------------
+  ActEnv.button_draw();
+  VisEnv.button_draw();
+  ActEnv.isClicked ? ToggleActVis_VolEnvelope("act");
+  VisEnv.isClicked ? ToggleActVis_VolEnvelope("vis");
+  
+  //--------------------------
+  gfx_x = 15; gfx_y = 140;
+  gfx_drawstr("Processing time: ");
+  gfx_drawnumber(process_time,3);
+  gfx_drawstr(" s");
+
+);
+
+//-- mainloop ----------------------------------------------
+function mainloop()
+(
+  //-- mouse and modkeys -----
+  (mouse_cap&1 && !(last_mouse_cap&1))  ||    //-- L mouse
+  (mouse_cap&2 && !(last_mouse_cap&2))  ||    //-- R mouse
+  (mouse_cap&64 && !(last_mouse_cap&64)) ? (  //-- M mouse
+    mouse_ox = mouse_x; mouse_oy = mouse_y;
+  ); 
+
+  Ctrl  = mouse_cap&4;  //-- Ctrl  state
+  Shift = mouse_cap&8;  //-- Shift state
+  Alt   = mouse_cap&16; //-- Shift state
+  
+  //-- Main functions etc ----
+  Draw_Controls();
+  RunMain ? ( 
+    MAIN(); 
+    RunMain = 0; 
+  ); 
+  
+  //--------------------------
+  last_mouse_cap = mouse_cap;
+  last_x = mouse_x; last_y = mouse_y;
+  char = gfx_getchar();
+  char==32 ? Main_OnCommand(40044, 0); //-- play
+  char >= 0 ? defer("mainloop();");    //-- defer
+  gfx_update();
+);
+
+//-- init --------------------------------------------------
+function Init()
+  local(width, height, dockstate, xpos, ypos, R,G,B)
+( //-- window ----------------
+  width = 280; height = 200; dockstate = 0; xpos = 650; ypos = 350;
+  gfx_init("Envelope-based Deesser",width,height,dockstate,xpos,ypos);
+  R = G = B = 20;
+  gfx_clear = R + G*256 + B*65536;
+  //-- Init mouse ------------
+  last_mouse_cap = 0;
+  last_x = last_y = 0;
+  mouse_ox = mouse_oy = -1;
+  
+  gfx_setfont(1, "Calibri", 16);
+  //gfx_setfont(1, "Arial", 15);
+);
+
+/*---------------------------------------
+--- Start Script ------------------------
+---------------------------------------*/
+Init();
+mainloop();
