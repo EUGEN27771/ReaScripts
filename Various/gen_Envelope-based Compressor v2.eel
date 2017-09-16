@@ -1,0 +1,1182 @@
+/* 
+   * ReaScript Name:Envelope-based Compressor
+   * EEL script for Cockos REAPER
+   * Author: EUGEN27771
+   * Author URI: http://forum.cockos.com/member.php?u=50462
+   * Licence: GPL v3
+   * Version: 2.00
+*/
+
+//**************************************************************************************************
+//*** Mouse functions ******************************************************************************
+//**************************************************************************************************
+//------------------------------------------------------------
+//-- Get current mouse state ---------------------------------
+//------------------------------------------------------------
+function GetMouseState()
+  globals(mouse_cap, mouse_x, mouse_y, mouse_last_cap, mouse_last_x, mouse_last_y,
+    mouse_down, mouse_rdown, mouse_mdown, mouse_up, mouse_rup, mouse_mup,
+    mouse_down_x, mouse_rdown_x, mouse_mdown_x, mouse_down_y, mouse_rdown_y, mouse_mdown_y,  
+    mouse_move, mouse_dbl, mouse_captimer, mouse_Ctrl, mouse_Shift, mouse_Alt) 
+         
+(
+  //-- Mouse btn has been pressed(anywhere) ------
+  mouse_down  = (mouse_cap&1)  && !(mouse_last_cap&1);  // L mouse
+  mouse_rdown = (mouse_cap&2)  && !(mouse_last_cap&2);  // R mouse
+  mouse_mdown = (mouse_cap&64) && !(mouse_last_cap&64); // M mouse
+  //-- Mouse btn has been released(anywhere) -----
+  mouse_up  = (mouse_last_cap&1)  && !(mouse_cap&1);    // L mouse
+  mouse_rup = (mouse_last_cap&2)  && !(mouse_cap&2);    // R mouse
+  mouse_mup = (mouse_last_cap&64) && !(mouse_cap&64);   // M mouse
+  //-- Mouse moved(anywhere) ---------------------
+  mouse_move = (mouse_last_x != mouse_x) || (mouse_last_y != mouse_y);
+  //-- Mouse dbl(used for mouseDblClick) ---------
+  mouse_down ? (
+    mouse_dbl = abs(mouse_down_x-mouse_x)<2 && abs(mouse_down_y-mouse_y)<2 && (mouse_captimer<12);
+    mouse_captimer = 0;
+  );
+  
+  //-- mouse press coordinates -------------------
+  mouse_down  ? (mouse_down_x  = mouse_x; mouse_down_y  = mouse_y; );
+  mouse_rdown ? (mouse_rdown_x = mouse_x; mouse_rdown_y = mouse_y; );
+  mouse_mdown ? (mouse_mdown_x = mouse_x; mouse_mdown_y = mouse_y; );
+  
+  //-- modkeys state -----------------------------
+  mouse_Ctrl  = mouse_cap&4;  // Ctrl
+  mouse_Shift = mouse_cap&8;  // Shift
+  mouse_Alt   = mouse_cap&16; // Alt
+);
+
+//------------------------------------------------------------
+//-- Set(update) last state ----------------------------------
+//------------------------------------------------------------
+function SetMouseLastState()
+  globals(mouse_cap, mouse_x, mouse_y, mouse_last_cap, mouse_last_x, mouse_last_y,
+    mouse_wheel, mouse_hwheel, mouse_captimer, mouse_up, mouse_dbl)
+( 
+  mouse_last_cap = mouse_cap; // upd last_cap
+  mouse_last_x = mouse_x;     // upd last_x
+  mouse_last_y = mouse_y;     // upd last_y
+  mouse_wheel  = 0;           // reset mouse_wheel
+  mouse_hwheel = 0;           // reset mouse_hwheel
+  //--------------
+  mouse_captimer < 12 ? mouse_captimer+=1; // upd "timer"(frame cnt)
+  mouse_up ? mouse_dbl = 0;   // reset dbl when released 
+);
+
+
+//------------------------------------------------------------------------------
+//--- Get mouse (with ref to the object) functions -----------------------------
+//------------------------------------------------------------------------------
+//pointINrect(), mouseINrect() must be called with arguments(x,y,w,h - active rect coords).
+//All other functions must be called with "object" prefix.
+//Functions use the object coordinates - MyObj.x, MyObj.y, MyObj.w, MyObj.h. 
+//Example: MyObj.mouseClick() ? SomethingCodeOnClick;
+
+//-- if point(p_x, p_y) in rect(x,y,w,h) area ----
+function pointINrect(p_x,p_y, x,y,w,h) ( p_x>=x && p_x<=x+w && p_y>=y && p_y<=y+h; );
+//-- if mouse cursor in rect(x,y,w,h) area -------
+function mouseINrect(x,y,w,h) ( pointINrect(mouse_x, mouse_y, x,y,w,h); );
+//-- if point(p_x, p_y) in object area -----------
+function pointIN(p_x,p_y) instance(x,y,w,h) ( this.pointINrect(p_x,p_y, x,y,w,h) );
+//-- if mouse cursor in object area --------------
+function mouseIN() ( this.pointIN(mouse_x, mouse_y); );
+
+
+//-- Left Mouse Button ---------------------------
+function mouseDown()    (mouse_down     && this.mouseIN(); );
+function mouseUp()      (mouse_up       && this.mouseIN(); );
+function mouseClick()   (this.mouseUp() && this.pointIN(mouse_down_x, mouse_down_y); );
+function mouseDblClick() (mouse_dbl && this.mouseClick(); );
+//-- Rigth Mouse Button --------------------------
+function mouseRDown()  (mouse_rdown     && this.mouseIN(); );
+function mouseRUp()    (mouse_rup       && this.mouseIN(); );
+function mouseRClick() (this.mouseRUp() && this.pointIN(mouse_rdown_x, mouse_rdown_y); );
+//-- Middle Mouse Button -------------------------
+function mouseMDown()  (mouse_mdown     && this.mouseIN(); );
+function mouseMUp()    (mouse_mup       && this.mouseIN(); );
+function mouseMClick() (this.mouseMUp() && this.pointIN(mouse_mdown_x, mouse_mdown_y); );
+
+
+
+//**************************************************************************************************
+//** MiniGui1-1 ************************************************************************************
+//**************************************************************************************************
+//--- some math functions ----
+function round(x)
+(
+  x < 0 ? ceil(x - 0.5) : floor(x + 0.5);
+);
+//----------------------------
+function roundstp(x, step)
+(
+  x < 0 ? ceil(x/step - 0.5)*step : floor(x/step + 0.5)*step;
+);
+//----------------------------
+function roundto(val, n)
+  local(shift)
+(
+  shift = pow(10, n);
+  round(val * shift) / shift;
+);
+
+//----------------------------
+function smval(val) 
+  local(smidge)
+( 
+  //try fix osx sprintf round
+  smidge = 2 ^ -52;
+  val + smidge*val;
+);
+
+//----------------------------
+function minmax(x, minv, maxv)
+(
+  min(max(x, minv), maxv); 
+);
+
+//----------------------------------------------------------
+//-- Simple TextField for Controls -------------------------
+//----------------------------------------------------------
+function TextField.Init(x,y,w,h, val)
+(
+  this.x = x; this.y = y; this.w = w; this.h = h; // coords
+  #this.val = val;
+  this.max_len = 64; // max symbols
+  this.blink = 0;
+  this.Apply = 0;
+);
+
+//--------------------------------------
+function TextField.GetKB()
+  instance(x,y,w,h, #val, str_len, blink, max_len)
+  local(str_len)
+(
+  gfx_char ? ( // gfx_char - global(можно сменить на арг. ф-и)
+    gfx_char == 27 || gfx_char == 13 ? ( // esc, enter
+      TextField.Apply = 1;
+    ) :
+    gfx_char == 8 ? (  // backspace
+      str_len = strlen(#val);
+      str_setlen(#val, max(str_len-1, 0)); 
+    ) : 
+    gfx_char > 31 && gfx_char < 127 ? (
+      //append = strlen(#val) or between (-0.5,0.0)
+      str_len < max_len ? str_setchar(#val, -0.25, gfx_char);
+    );
+
+  );
+  //-------------
+  mouse_down && !this.mouseIN() ? TextField.Apply = 1;
+   
+);
+
+//--------------------------------------
+function TextField.Draw()
+  instance(x,y,w,h, #val, blink, str_rx)
+  local(str_w, str_h)
+(
+  TextField.GetKB();
+  //--------------------------
+  gfx_set(0.9);
+  gfx_rect(x,y,w,h); // bg
+  gfx_set(0.5);
+  gfx_rect(x,y,w,h,0); // frame
+  //--------------------------
+  
+  str_w = str_h = 0;
+  gfx_measurestr(#val, str_w, str_h);
+  gfx_x = x + 5; gfx_y = y;
+  str_rx = gfx_x + min(w-10, str_w);
+  gfx_set(0);
+  gfx_drawstr(#val, 6, str_rx, y + h );
+  blink < 20 ? blink +=1 : blink = 0;
+  blink < 10 ? gfx_line(str_rx+1, y+2, str_rx+1, y+h-4); // v1
+
+);
+
+
+//******************************************************************************
+// scaling functions можно добавлять по образцу val_to_normval2,3 ... etc
+//******************************************************************************
+//-- Value from-to normval(linear) -------------------------
+function val_to_normval(val, minval, maxval) 
+(
+  (val - minval) / (maxval - minval); // ret norm value
+); 
+//----------------------------
+function normval_to_val(normval, minval, maxval) 
+(
+  minval + (maxval - minval) * normval; // ret value 
+);
+
+//-- Value from-to normval(log) ----------------------------
+function val_to_normval1(val, minval, maxval)
+  local(offset, minv, maxv, scale)
+(  // I use offset if minval<1 
+  minval < 1 ? (offset = 1 - minval) : offset = 0;
+  minv = log(minval + offset); 
+  maxv = log(maxval + offset);
+  scale = maxv - minv;
+  (log(val + offset) - minv) / scale; // ret norm value
+);
+//----------------------------
+function normval_to_val1(normval, minval, maxval)
+  local(offset, minv, maxv, scale)
+( // I use offset if minval<1
+  minval < 1 ? (offset = 1 - minval) : offset = 0;
+  minv = log(minval + offset); 
+  maxv = log(maxval + offset);
+  scale = maxv - minv;
+  exp(minv + scale*normval) - offset; // ret value
+); 
+
+//----------------------------------------------------------
+//-- Obj scaling val<>norm_val, add new if need ------------
+//----------------------------------------------------------
+function DW_val_to_normval(val)
+  instance(minval, maxval, scaling) 
+  local(normval)
+(
+  scaling == 0 ? normval = val_to_normval(val, minval, maxval);
+  scaling == 1 ? normval = val_to_normval1(val, minval, maxval);
+  //scaling == 2 ? normval = val_to_normval2(val, minval, maxval);
+  //scaling == etc....
+  //--retval -------
+  //normval; // v1 no ranged
+  minmax(normval, 0, 1); // v2(пробуем здесь, может это полезнее)
+);
+//----------------------------
+function DW_normval_to_val(norm_val)
+  instance(minval, maxval, scaling)
+  local(val)
+(
+  scaling == 0 ? val = normval_to_val(norm_val, minval, maxval);
+  scaling == 1 ? val = normval_to_val1(norm_val, minval, maxval);
+  //scaling == 2 ? val = normval_to_val2(norm_val, minval, maxval);
+  //scaling == etc....
+  //--retval -------
+  //val; // v1 no ranged
+  minmax(val, minval, maxval); // v2(пробуем здесь, может это полезнее) 
+);
+
+
+//----------------------------------------------------------
+//-- Set obj parameters ------------------------------------
+//----------------------------------------------------------
+//-- Set Coordinates -----------------------------
+function objSetCoords(x,y,w,h)
+(
+  this.x = x; this.y = y; this.w = w; this.h = h;
+);
+
+//-- Set Color -----------------------------------
+function objSetColor(r,g,b,a)
+(
+  this.r = r; this.g = g; this.b = b; this.a = a;
+);
+
+//-- Set DW obj val, normval, regard val_step ----
+function DW_SetVal(new_val)
+  instance(val, minval, maxval, valstep, normval)
+(
+  new_val = minmax(new_val, minval, maxval);
+  val = roundstp(new_val, valstep);
+  normval = this.DW_val_to_normval(val); // correct(steped) normval
+  //this.DW_value_to_JS(); // only js 
+);
+
+//----------------------------------------------------------
+//-- Change value on mouse drag ----------------------------
+//----------------------------------------------------------
+function DW_Vdrag()
+  instance(type, x,y,w,h, hnd_sz, tmp_norm)
+(   
+  mouse_Ctrl ? (
+    tmp_norm += (mouse_last_y - mouse_y) / 2000; // K = 2000 Precise 
+  ) : (
+    type == "Slider" ? ( // Slider
+      tmp_norm = (y + h - hnd_sz/2 - mouse_y)/(h - hnd_sz); // For Sliders
+    ) : (
+      tmp_norm += (mouse_last_y - mouse_y) / 200; // K = 200 For Knobs
+    );
+  );
+
+  this.DW_normval_to_val(tmp_norm); // retval
+);
+
+//----------------
+function DW_Hdrag()
+  instance(type, x,y,w,h, hnd_sz, tmp_norm)
+(   
+  mouse_Ctrl ? (
+    tmp_norm += (mouse_x - mouse_last_x) / 2000; // K = 2000 Precise 
+  ) : (
+    type == "Slider" ? ( // Slider
+      tmp_norm = (mouse_x - x - hnd_sz/2)/(w - hnd_sz); // For Sliders
+    ) : (
+      tmp_norm += (mouse_x - mouse_last_x) / 200; // K = 200 For Knobs
+    );
+  );
+
+  this.DW_normval_to_val(tmp_norm); // retval
+);
+
+//-- Call V, H drag depending of dir ---
+function DW_drag()
+(
+  // retval = DW_Vdrag() or DW_Hdrag() dep of obj dir
+  this.dir == "V" ? this.DW_Vdrag() : this.DW_Hdrag();
+);
+
+//----------------------------------------------------------
+//-- DW Get mouse function ---------------------------------
+//----------------------------------------------------------
+function DW_GetMouse()
+  instance(type, dir, val, def_val, valstep, normval, tmp_norm, isCaptured, isChanged, isReleased, val_lbl)
+  local(new_val)
+(
+  isChanged = isReleased = 0;
+  new_val = val;
+  //----------------
+  isCaptured && !(mouse_cap&1) ? (
+    isCaptured = 0;
+    isReleased = 1;
+  );
+  //----------------
+  this.mouseDown() ? (
+    tmp_norm = normval; // tmp non-stepped!
+    isCaptured = 1;
+  );
+  //----------------
+  this.mouseDblClick() ? (
+    new_val = def_val;
+    isChanged = 1; 
+  );
+  //----------------
+  isCaptured ? (
+    new_val = this.DW_drag();
+    isChanged = 1; 
+  );
+  //----------------
+  this.val_lbl.mouseClick() ? (
+   !this.TextField.isActive ? (
+    TextField.Init(val_lbl.x, val_lbl.y, val_lbl.w, val_lbl.h, sprintf(#,"%g", smval(val)) );
+    this.TextField.isActive = 1;
+    );
+  );
+  //----------------
+  this.TextField.isActive && TextField.Apply ? (
+    this.TextField.isActive = 0;
+    match("%f", #TextField.val, new_val) ? isChanged = isReleased = 1;
+  );
+  
+  //----------------
+  (isChanged = isChanged && abs(new_val - val) >= valstep) ? (
+    this.DW_SetVal(new_val); // set val if changed
+  );
+  
+);
+
+//------------------------------------------------
+//-- Draw labels --------------------------------- 
+//------------------------------------------------
+function DW_Hlabels()
+  local(str_w, str_h, val_str)
+  instance(r,g,b,a, x,y,w,h, lbl, val, val_lbl)
+(
+  gfx_setfont(gui.font1);
+  gfx_set(r,g,b,a);
+  // -- label ----------------
+  gfx_x = x - gfx_texth/2; 
+  gfx_y = y;
+  gfx_drawstr(lbl, 262, gfx_x, gfx_y + h); // draw lbl
+  // -- val label ------------
+  val_lbl.w = gfx_texth*4;
+  val_lbl.h = gfx_texth*1.25;
+  val_lbl.x = gfx_x = x + w + gfx_texth/2; 
+  val_lbl.y = gfx_y = y;
+  val_str = sprintf(#, "%g %s", smval(val), val_lbl); // "%g" - variant 
+  gfx_drawstr(val_str, 260, gfx_x, gfx_y + h); // draw val + val_lbl
+);
+
+//--------------------------------------
+function DW_Vlabels()
+  local(str_w, str_h, val_str)
+  instance(r,g,b,a, x,y,w,h, lbl, val, val_lbl)
+(
+  gfx_setfont(gui.font1);
+  gfx_set(r,g,b,a);
+  // -- label ----------------
+  gfx_x = x + w/2;
+  gfx_y = y + h;
+  gfx_drawstr(lbl, 261, gfx_x, gfx_y + gfx_texth); // draw lbl
+  // -- val label ------------
+  val_lbl.w = gfx_texth*4; 
+  val_lbl.h = gfx_texth*1.25;
+  val_lbl.x = gfx_x = x + (w - val_lbl.w)/2; 
+  val_lbl.y = gfx_y = y - gfx_texth;
+  val_str = sprintf(#, "%g %s", smval(val), val_lbl);  // "%g" - variant
+  gfx_drawstr(val_str, 261, gfx_x + val_lbl.w, y); // draw val + val_lbl
+);
+//------------------------------------------------
+//-- H-slider drawing ----------------------------
+//------------------------------------------------
+function sldrH_image()
+  instance(x,y,w,h, r,g,b,a, hnd_sz, normval)
+  local(sx,sy,sw,sh, v, xv)
+(  
+  hnd_sz = 14; // handle size(sliders only)
+  sh = 4;              // sliderway h
+  sy = y + (h - sh)/2; // sliderway y
+  sx = x + hnd_sz/2;   // sliderway x
+  sw = w - hnd_sz;     // sliderway w
+  v = sw * normval;
+  xv = sx + v;
+  //----------------
+  gfx_set(r,g,b,a);
+  //gfx_rect(x,y,w,h,0); // slider active rect
+  gfx_rect(sx, sy, sw, sh, 0); // sliderway
+  //----------------
+  gfx_set(r,g,b,a-0.1);
+  gfx_rect(sx, sy, v, sh, 1);
+  gfx_set(r,g,b,a); 
+  gfx_circle(xv, y + h/2, hnd_sz/2, 1, 1);  
+);
+
+//------------------------------------------------
+//-- V-slider drawing ----------------------------
+//------------------------------------------------
+// Вместо этого можно просто вставить картинку
+function sldrV_image()
+  instance(x,y,w,h, r,g,b,a, hnd_sz, normval)
+  local(sx,sy,sw,sh, v, yv)
+(  
+  hnd_sz = 14; // handle size(sliders only)
+  sw = 4;              // sliderway w
+  sx = x + (w - sw)/2; // sliderway x
+  sy = y + hnd_sz/2;   // sliderway y
+  sh = h - hnd_sz;     // sliderway h
+  v = round(sh * normval);
+  yv = sy + sh - v;
+  //----------------
+  gfx_set(r,g,b,a);
+  //gfx_rect(x,y,w,h,0); // slider active rect
+  gfx_rect(sx, sy, sw+1, sh, 0); // sliderway
+  //----------------
+  gfx_set(r,g,b,a-0.1);
+  gfx_rect(sx, yv + hnd_sz/2, sw+1, v - hnd_sz/2, 1);
+  gfx_set(r,g,b,a);
+  gfx_circle(sx + sw/2, yv, hnd_sz/2, 1, 1);  
+);
+
+//------------------------------------------------
+//-- Knob drawing --------------------------------
+//------------------------------------------------
+// Вместо этого можно просто вставить картинку
+function knob_image()
+  instance(x,y,w,h, r,g,b,a, normval)
+  local(cx, cy, rds, offs, vr, angmax, ang1, ang2, i) 
+( 
+   cx = x + w/2; 
+   cy = y + h/2; 
+   rds = w/2;
+   angmax = 2.75*$pi; // max
+   offs = 1.25 * $pi; //$pi + $pi*0.25;
+   vr = (1.5 * $pi) * normval;
+   ang1 = offs - 0.01; 
+   ang2 = offs + vr;
+   //----------------------
+   gfx_set(0.12);
+   gfx_circle(cx, cy, rds-7, 1);    
+   //----------------------
+   gfx_set(0.15);
+   i=0;
+   loop(5, 
+     gfx_arc(cx, cy, rds-i,  ang1, angmax, 1);
+     i+=0.5;
+   );
+   //----------------------
+   gfx_set(r,g,b,a); 
+   i=0;
+   loop(5, 
+     gfx_arc(cx, cy, rds-i,  ang1, ang2, 1);
+     i+=0.5;
+   );
+);
+
+//------------------------------------------------------------------------------
+//-- Create Drag Widget(slider, knob etc) --------------------------------------
+//------------------------------------------------------------------------------
+function DW_New(idx, type, dir, x,y,w,h, r,g,b,a, lbl, val_lbl, val, minval, maxval, valstep, scaling)
+(
+  this.type = type;
+  this.dir = dir; 
+  this.objSetCoords(x,y,w,h);
+  this.objSetColor(r,g,b,a);
+  //--------------------------
+  this.lbl = lbl;         // label, for ex. "Threshold", "Freq" etc
+  this.val_lbl = val_lbl; // value label, for ex. "dB", "Hz" etc
+  this.idx = idx;
+  this.minval = minval;  
+  this.maxval = maxval;
+  this.valstep = valstep;
+  this.scaling = scaling;
+  this.DW_SetVal(val); // set values
+  this.def_val = this.val;
+);  
+
+//----------------------------------------------------------
+//-- Draw Drag widget --------------------------------------
+//----------------------------------------------------------
+//-- V Slider ------
+function sldrH_Draw()
+(
+  this.sldrH_image(); this.DW_Hlabels();
+);
+//-- H Slider ------
+function sldrV_Draw()
+(
+  this.sldrV_image(); this.DW_Vlabels();
+);
+//-- Knob ----------
+function knob_Draw()
+(
+  this.knob_image(); this.DW_Vlabels();
+);
+
+//--------------------------------------
+//-- Main DW draw function -------------
+//--------------------------------------
+function DW_Draw()
+(
+  this.idx ? (
+    this.DW_GetMouse();
+    this.type=="Slider" ? (
+      this.dir=="V" ? this.sldrV_Draw() : this.sldrH_Draw();
+    ) : (
+      this.type=="Knob" ? (
+        this.knob_Draw();
+      );
+    );
+  );
+  
+  this.TextField.isActive ? TextField.Draw();
+);
+
+//------------------------------------------------------------------------------
+//-- Create CheckBox -----------------------------------------------------------
+//------------------------------------------------------------------------------
+function CheckBox_New(idx, x,y,w,h, r,g,b,a,  lbl, val)
+(
+  this.idx = idx;
+  this.objSetCoords(x,y,w,h);
+  this.objSetColor(r,g,b,a);
+  this.val = val;
+  this.lbl = lbl;
+);
+
+
+//----------------------------------------------------------
+//-- Draw CheckBox -----------------------------------------
+//----------------------------------------------------------
+function CheckBox_Draw()
+  instance(x,y,w,h, r,g,b,a, lbl, val, isChanged)
+(
+  isChanged = 0;
+  this.mouseDown() ? (
+    val = !val;
+    isChanged = 1;
+  ); 
+  
+  //----------------
+  gfx_setfont(gui.font1);
+  gfx_set(r,g,b,a);
+  //----------------
+  val ? ( 
+    gfx_x = x + (w - gfx_texth*0.5)/2;
+    gfx_y = y + (h - gfx_texth)/2;
+    gfx_drawchar(10004);
+  );
+  //----------------
+  gfx_x = x + w + gfx_texth*0.5;
+  gfx_y = y;
+  gfx_drawstr(lbl, 260, gfx_x, gfx_y + h);
+  gfx_a = 0.15; // field frame col alfa
+  gfx_rect(x, y, w, h, 0); // field frame
+  
+);
+
+//**************************************************************************************************
+//*** Audio functions ******************************************************************************
+//**************************************************************************************************
+// -- DB2VAL - VAL2DB ----------------------------
+function DB2VAL(x)
+(
+  exp((x)*0.11512925464970228420089957273422);
+);
+//----------------------------
+function VAL2DB(x)
+  local(v)
+(
+  x < 0.0000000298023223876953125 ? (
+    -150; 
+  ) : (
+    v = log(x)*8.6858896380650365530225783783321;
+    v < -150 ? -150 : v;
+  );
+);
+
+//------------------------------------------------
+//-- Simple Filter -------------------------------
+//------------------------------------------------
+function FilterB.SetValues(type, FreqHz, samplerate)
+  local(sqr2, c, c2, csqr2, d)
+  instance(active, ampIn0, ampIn1, ampIn2, ampOut1, ampOut2,
+  dlyIn1, dlyIn2, dlyOut1, dlyOut2) //reset on change    
+( 
+  // пересмотреть акт. значения. LP тоже не должен заходить в ноль!
+  active = (type == 0 && FreqHz < 19999) || (type == 1 && FreqHz > 1);  
+  
+  active ? (
+    type ? (
+      // Hi Pass //
+      sqr2 = 1.414213562;
+      c = tan(($pi/samplerate) * FreqHz );
+      c2 = c * c;
+      csqr2 = sqr2 * c;
+      d = (c2 + csqr2 + 1);
+      ampIn0 = 1 / d;
+      ampIn1 = -(ampIn0 + ampIn0);
+      ampIn2 = ampIn0;
+      ampOut1 = (2 * (c2 - 1)) / d;
+      ampOut2 = (1 - csqr2 + c2) / d;
+    ) : (
+      // Low Pass //
+      sqr2 = 1.414213562;
+      c = 1 / tan(($pi/samplerate) * FreqHz );
+      c2 = c * c;
+      csqr2 = sqr2 * c;
+      d = (c2 + csqr2 + 1);
+      ampIn0 = 1 / d;
+      ampIn1 = ampIn0 + ampIn0;
+      ampIn2 = ampIn0;
+      ampOut1 = (2 * (1 - c2)) / d;
+      ampOut2 = (c2 - csqr2 + 1) / d;   
+    );
+  );
+  
+  // без сброса тянется хвост, на скриптах не подходит!
+  dlyIn1 = dlyIn2 = dlyOut1 = dlyOut2 = 0; //reset on change
+
+);
+
+//----------------------------
+// Filter in = input sample
+// Filter out = out sample
+function FilterB.Apply(in)
+  instance(active, ampIn0, ampIn1, ampIn2, ampOut1, ampOut2, dlyIn1, dlyIn2, dlyOut1, dlyOut2, out)
+(
+  out = in;
+  active ? (
+    out = (ampIn0 * in) + (ampIn1 * dlyIn1) + (ampIn2 * dlyIn2) - (ampOut1 * dlyOut1) - (ampOut2 * dlyOut2);
+    dlyOut2 = dlyOut1;
+    dlyOut1 = out;
+    dlyIn2 = dlyIn1;
+    dlyIn1 = in;
+  );
+  
+  out;
+);
+
+//------------------------------------------------
+// -- Env follower -------------------------------
+//------------------------------------------------
+function EnvFollower.SetValues(attack_ms, release_ms, samplerate)
+(
+  this.ga = exp(-1/(samplerate*attack_ms/1000));
+  this.gr = exp(-1/(samplerate*release_ms/1000));
+  this.out = 0;
+);
+
+//------------------------------
+// Env in = input sample
+// Env retval = out = output envelope
+function EnvFollower.Apply(in)
+  instance(ga, gr, out)
+(
+  in = abs(in); // abs sample value
+  out < in ? out = in + ga*(out-in) : out = in + gr*(out-in); 
+);
+
+//------------------------------------------------
+// -- Simple Compressor --------------------------
+//------------------------------------------------
+//thresh_dB = comp threshold
+//ratio = X in form X : 1, must be num 1 ... max,
+//slope 0 = no compress, 1 = max compression
+function CompD.SetValues(thresh_dB, ratio)
+(
+  this.thresh_dB = thresh_dB;
+  this.thresh = 10^(thresh_dB/20);
+  this.ratio = ratio;
+  this.slope = 1 - 1/ratio; // slope
+);
+
+//------------------------------
+//Comp env = envelope 
+//Comp gain = gain multiplier
+//slope прим. к разнице в dB, поэтому преобразования
+function CompD.Apply(env)
+  instance(thresh_dB, thresh, slope, gain_dB, gain)
+(
+  gain = 1;
+  gain_dB = 0;
+  env > thresh ? (
+    gain_dB = slope * (thresh_dB - VAL2DB(env));
+    gain = DB2VAL(gain_dB);
+  ); 
+  gain; // comp out gain
+);
+
+
+
+//**************************************************************************************************
+//*** Main part ************************************************************************************
+//**************************************************************************************************
+//----------------------------------------------------------------------------------------
+//-- Create Gui controls -----------------------------------------------------------------
+//----------------------------------------------------------------------------------------
+function CreateControls()
+  local(r,g,b,a)
+(
+  r = 170/255; g = 140/255; b = 90/255; a = 1; // change if need...
+  //-------------
+  Thresh.DW_New(1, "Slider", "V",  40,30,20,220, r,g,b,a, "Threshold", "dB",    0, -60,  6, 0.1, 0);
+  Gain.DW_New(2,   "Slider", "V", 460,30,20,220, r,g,b,a, "Out Gain",  "dB",    0, -24, 18, 0.1, 0);
+  //-------------
+  PreComp.DW_New(3,  "Slider", "H", 160,30,200,20,  r,g,b,a, "Pre-Comp",  "ms",    0,   0,  100, 0.1, 0);
+  Attack.DW_New(4,   "Slider", "H", 160,60,200,20,  r,g,b,a, "Attack",    "ms",   10,   1,  200, 0.1, 0);
+  Release.DW_New(5,  "Slider", "H", 160,90,200,20,  r,g,b,a, "Release",   "ms",  100,   3,  500,   1, 0);
+  Ratio.DW_New(6,    "Slider", "H", 160,120,200,20, r,g,b,a, "Ratio",    ": 1",    4,   1,   20, 0.01, 1);
+  Interval.DW_New(7, "Slider", "H", 160,150,200,20, r,g,b,a, "Interval",  "ms",    5,   1,  100,   1, 0);
+  //-------------
+  HPFreq.DW_New(8, "Knob", "V", 100,210,40,40, r,g,b,a, "Hipass",  "Hz",       0,  0, 20000,   1, 1);
+  LPFreq.DW_New(9, "Knob", "V", 170,210,40,40, r,g,b,a, "Lowpass", "Hz",   20000,  1, 20000,   1, 1);
+  //-------------
+  ActEnv.CheckBox_New(10,  260,200,18,18, r,g,b,a, "Activate Envelopes", 0);
+  VisEnv.CheckBox_New(11,  260,221,18,18, r,g,b,a, "Show Envelopes", 0);
+  UpdMode.CheckBox_New(12, 260,243,18,18, r,g,b,a, "Allow RT Update", 0);
+);
+
+
+//----------------------------------------------------------------------------------------
+//-- Get Active-Visible State VolEnv(sel items, takes) -----------------------------------
+//----------------------------------------------------------------------------------------
+function VolEnv_GetActVisState()
+  local(item_cnt, item_idx, item, take, VolEnv, BR_Env,
+        BR_Env, active,visible,
+        armed, inLane,laneHeight, 
+        defShape, minVal,maxVal,centerVal, type, faderScaling,
+        Allactive, AllVisible)   
+(
+  Allactive = AllVisible = 0;
+  item_cnt = CountSelectedMediaItems(0);
+  item_idx = 0;
+  loop(item_cnt,
+      item = GetSelectedMediaItem(0, item_idx);
+      take = GetActiveTake(item);
+      VolEnv = GetTakeEnvelopeByName(take,"Volume"); // Get take "Volume" envelope
+
+      //-- активные и видимые по состоянию --
+      VolEnv && ValidatePtr2(0, VolEnv, "TrackEnvelope*") ? ( // ValidatePtr - пров. указатель
+        BR_Env = extension_api("BR_EnvAlloc", VolEnv, 0);
+        extension_api("BR_EnvGetProperties", BR_Env, active, visible, armed, inLane,laneHeight, 
+                      defShape, minVal,maxVal,centerVal, type, faderScaling);
+        active ? AllActive += 1;  // All active
+        visible ? AllVisible += 1; // All visible
+        extension_api("BR_EnvFree", BR_Env, 0);
+      );
+      
+      item_idx+=1;
+  );
+  
+  // -- Сравнивает кол-во айтемов и огибающих, устанавливает знач. CheckBox
+  // -- устанавливать здесь плохо, перенести вниз потом
+  AllActive == item_cnt ? ActEnv.val = 1 : ActEnv.val = 0;
+  AllVisible == item_cnt ? VisEnv.val = 1 : VisEnv.val = 0;
+
+);
+
+//----------------------------------------------------------------------------------------
+//-- Set Act-Vis State for VolEnv(sel items, takes) --------------------------------------
+// mode must be "act" or "vis"; val = 0 or 1 ---------------------------------------------
+//----------------------------------------------------------------------------------------
+function VolEnv_SetActVisState(mode, val)
+  local(item_cnt, item_idx, item, take, VolEnv, BR_Env,
+        BR_Env, active,visible,armed, inLane,laneHeight, 
+        defShape, minVal,maxVal,centerVal, type, faderScaling)   
+(
+  item_cnt = CountSelectedMediaItems(0);
+  item_cnt ? Undo_OnStateChange("Envelope-based Compressor, Act-Vis Env");
+  item_idx = 0;
+  loop(item_cnt,
+      item = GetSelectedMediaItem(0, item_idx);
+      take = GetActiveTake(item);
+      VolEnv = GetTakeEnvelopeByName(take,"Volume"); // Get take "Volume" envelope
+      
+      //-- Set act,vis depend of mode(if VolEnv exists) -----
+      VolEnv && ValidatePtr2(0, VolEnv, "TrackEnvelope*") ? (
+        BR_Env = extension_api("BR_EnvAlloc", VolEnv, 0);
+        extension_api("BR_EnvGetProperties", BR_Env, active,visible,armed, inLane,laneHeight, 
+                      defShape, minVal,maxVal,centerVal, type, faderScaling);
+        mode == "act" ? active  = val; // set active
+        mode == "vis" ? visible = val; // set visible
+        extension_api("BR_EnvSetProperties", BR_Env, active,visible,armed, inLane,laneHeight, 
+                      defShape, faderScaling);
+        extension_api("BR_EnvFree", BR_Env, 1);
+      ) : (
+        //-- Create(if VolEnv no exist) ----
+        Main_OnCommand(NamedCommandLookup("_S&M_TAKEENV1"), 0);
+        VolEnv = GetTakeEnvelopeByName(take,"Volume");
+      );
+      item_idx+=1;
+  );
+  
+);
+
+//----------------------------------------------------------------------------------------
+//--- Insert volume envelope from envbuf -------------------------------------------------
+//----------------------------------------------------------------------------------------
+function VolEnv_Insert(VolEnv, range_start, range_len, srate, envbuf, pnt_cnt)
+  local(PreComp, Gain, env_mode, shape,tens,sel,nosort, roffs, val,val1, rs_val,re_val, i, pos)     
+(
+  PreComp = PreComp.val/1000;
+  Gain = DB2Val(Gain.val);
+  //--------------------------
+  env_mode = GetEnvelopeScalingMode(VolEnv);      // get VolEnv scaling mode
+  val1 = ScaleToEnvelopeMode(env_mode, 1 * Gain); // Scaled  val=1
+  //shape = 2; tens = 0; sel = 0; nosort = 1;     // def for new compss points 1
+  shape = 0; tens = 0; sel = 0; nosort = 1;       // def for new compss points 2
+  
+  //-- Del Old points, Ins points at edges(use edges values) ---------
+  Envelope_Evaluate(VolEnv, range_start, srate, 0, rs_val);           // get env val at start
+  Envelope_Evaluate(VolEnv, range_start+range_len, srate, 0, re_val); // get env val at end
+  DeleteEnvelopePointRange(VolEnv, range_start-0.0001, range_start+range_len-PreComp+0.0001); // Del Old points 
+  //--------------------------
+  // PreComp здесь отнимается от края, от точек и т.п, так как был учтен в range_len!
+  // Можно для ясности сделать разные переменные range_len и range_len2(c PreComp)
+  // На айтемах, целиком входящих в range, по идее, можно не ставить точки rs и re.
+  // Еще хороший вариант не ставить точки rs и re, если первая/посл. точки буфера близки к началу/концу range. 
+  roffs = 0.0001; // микро-отступы для сохр. краев range, судя по чанку, могут быть и меньше намного, пока так! 
+  InsertEnvelopePoint(VolEnv, range_start, rs_val, 0, 0, 0, 1);      // Insert point=curval at start
+  InsertEnvelopePoint(VolEnv, range_start+roffs, val1, 0, 0, 0, 1);  // Insert point=1 at start
+  InsertEnvelopePoint(VolEnv, range_start+range_len-PreComp-roffs, val1, 0, 0, 0, 1);  // Insert point=1 at end
+  InsertEnvelopePoint(VolEnv, range_start+range_len-PreComp, re_val, 0, 0, 0, 1); // Insert point=curval at end
+  //--------------------------
+  i = 0;
+  while(envbuf[i] <= range_start + PreComp + roffs && i < pnt_cnt)( 
+    i+=2; pnt_cnt-=2; // Если точки выходят за range_start!
+  );
+  //--------------------------
+  loop(pnt_cnt*0.5,
+    pos = envbuf[i] - PreComp;
+    val = ScaleToEnvelopeMode(env_mode,  envbuf[i+1] * Gain);   // Scale point value
+    InsertEnvelopePoint(VolEnv, pos, val, shape, tens, sel, nosort); // Insert point        
+    i+=2;  
+  );
+  //--------------------------
+  Envelope_SortPoints(VolEnv);
+);
+
+//----------------------------------------------------------------------------------------
+//---  Create envelope point, based on take source audio  --------------------------------
+//----------------------------------------------------------------------------------------
+function ChanMixing(samplebuf, block_size, n_chans)
+  local(smpl, ch_smpl, chan_sum) 
+(
+  smpl = ch_smpl = chan_sum = 0;
+  n_chans > 1 ? (
+    smpl = 0;
+    loop(block_size,
+      ch_smpl = smpl * n_chans;
+        chan_sum = 0; // init
+        loop(n_chans, chan_sum += samplebuf[ch_smpl]; ch_smpl+=1; ); // sum spls
+        samplebuf[smpl] = chan_sum/n_chans; // average value
+      smpl+=1; 
+    );
+  );
+);
+
+//------------------------------------------------
+function VolEnv_Create(take,srate,n_chans, samplebuf, envbuf,  range_start, n_blocks, block_size, rest_smples)
+  local(AA, starttime_sec, cur_block, smpl, input, fltr_out, env_out, comp_out, 
+        trig, last_trig, pnt_cnt, interval, interval_cnt, toffs)
+(
+  interval = ceil(Interval.val/1000 * srate); // min interval beetween comp env points in samples
+  
+  AA = CreateTakeAudioAccessor(take);
+  starttime_sec = range_start; // first block start
+  cur_block = 0;
+  trig = last_trig = 0;
+  pnt_cnt = 0;
+  
+  // -- Audio processing ---------------
+  loop(n_blocks+1,
+      cur_block == n_blocks ? block_size = rest_smples; // last block = rested samples  
+      memset(0, 0, 65536); // clear samplebuffer, чистить обязательно, PreComp остатки вылазят(4% жрет-фигня)
+      GetAudioAccessorSamples(AA, srate, n_chans, starttime_sec, block_size, samplebuf); // get all channels    
+      ChanMixing(samplebuf, block_size, n_chans); // mix channnels if more then one
+        //------------------------------ 
+        smpl=0;
+        loop(block_size,
+            input = samplebuf[smpl];  // sample from buf
+            fltr_out = LP.FilterB.Apply(input);    // LP Filtering
+            fltr_out = HP.FilterB.Apply(fltr_out); // HP Filtering
+            env_out = EnvFollower.Apply(fltr_out); // Peak Envelope
+            comp_out = CompD.Apply(env_out); // Compressor
+            
+            //-- Add comp point --------
+            comp_out < 1 ? (
+              trig = 1;
+              interval_cnt > interval ? (
+                envbuf[pnt_cnt] = starttime_sec + smpl/srate; // position
+                envbuf[pnt_cnt+1] = comp_out; // value
+                pnt_cnt+=2;
+                interval_cnt = 0;
+              );
+              interval_cnt+=1;
+            ) : (
+              trig = 0;
+            );
+            
+            //-- Add trig point --------
+            trig != last_trig ? (
+              trig ? (toffs = -2; interval_cnt = interval+1;) : toffs = 2; // 2 smpls
+              envbuf[pnt_cnt] = starttime_sec + (smpl + toffs)/srate; // position
+              envbuf[pnt_cnt+1] = 1; // value
+              pnt_cnt+=2;
+              last_trig = trig;
+            );
+            
+            //--------------------------               
+            smpl+=1;   
+        );
+               
+      starttime_sec+=block_size/srate; // next block starttime
+      cur_block+=1; // block counter
+  );
+  
+  DestroyAudioAccessor(AA);
+  
+  pnt_cnt; // return envbuf ptr(num of points/2)
+
+);
+
+
+//----------------------------------------------------------------------------------------
+//--- Rebuild volume envelope ------------------------------------------------------------
+//----------------------------------------------------------------------------------------
+function RebuildVolEnvelope(item, take, srate, n_chans, VolEnv)
+  local(item_start, item_len, sel_start, sel_end, playrate, range_start, range_len, range_len_smpls, 
+        block_size, n_blocks, rest_smples,
+        samplebuf, envbuf, pnt_cnt,
+        take_vol, item_vol, vol_offs)
+( 
+  item_start = GetMediaItemInfo_Value(item, "D_POSITION"); // item position
+  item_len  = GetMediaItemInfo_Value(item, "D_LENGTH");    // item orig length
+  GetSet_LoopTimeRange(0, 0, sel_start, sel_end, 0);       // get time selection
+  !(sel_end - sel_start) ? (       // if no selection, then
+    sel_start = item_start;        // use item start
+    sel_end = item_start+item_len; // use item end
+  );
+  sel_start = max(sel_start, item_start);         // if sel_start or sel_end out of item, then
+  sel_end   = min(sel_end, item_start+item_len);  // use item_start, item_end respectively
+  //sel_end - sel_start < 0 ? MB("Time selection out of item range!", "Note", 0); 
+   
+  //------------------------------------------------------------------
+  sel_end - sel_start > 0 ? ( 
+    //-- If playrate != 1 --------------------------------------------
+    playrate = GetMediaItemTakeInfo_Value(take, "D_PLAYRATE"); // get take orig playrate
+    playrate != 1 ? (
+      SetMediaItemTakeInfo_Value(take, "D_PLAYRATE", 1); // AA work faster with playrate = 1
+      SetMediaItemInfo_Value(item, "D_LENGTH", item_len*playrate); // len*playrate 
+    );
+    //-- Define work range(with regard orig playrate and + PreComp) --
+    range_start = (sel_start-item_start)*playrate;  // range start
+    // Внимание, range_len длиннее на величину PreComp для завхвата посл. участка, все дальше тоже с учетом!!!
+    range_len = (sel_end + PreComp.val/1000 - sel_start)*playrate; // range_len = range_len + PreComp!!!
+    //----------------------------------
+    range_len_smpls = floor(range_len*srate); // range length to samples
+    //----------------------------------
+    block_size = floor(65536/n_chans);  // full block size(samples), note MAX = 65536!!!
+    n_blocks = floor(range_len_smpls/block_size);         // number of full blocks
+    rest_smples = range_len_smpls - block_size*n_blocks;  // rest of samples(incomplete last block)    
+    take_vol = GetMediaItemTakeInfo_Value(take, "D_VOL"); // regard take volume
+    item_vol = GetMediaItemInfo_Value(item, "D_VOL");     // regard item volume
+    vol_offs = VAL2DB(take_vol*item_vol);  // offset subtracted from the comp threshold
+    //-- Set Values from sliders --------
+    LP.FilterB.SetValues(0, LPFreq.val, srate); // Set LowPass filter, Freq in Hz
+    HP.FilterB.SetValues(1, HPFreq.val, srate); // Set HiPass filter, Freq in Hz
+    //-----------------------------------
+    EnvFollower.SetValues(Attack.val, Release.val, srate); // Set Follower, att/rel in ms
+    CompD.SetValues(Thresh.val-vol_offs, Ratio.val); // Set Comp, thresh db, ratio X:1
+    //-- Process audio, create Env ------ 
+    samplebuf = 0;  // buffer for accessor samples
+    envbuf = 65536; // buffer for envelope points
+    pnt_cnt = VolEnv_Create(take,srate,n_chans, samplebuf,envbuf, range_start, n_blocks, block_size, rest_smples);
+    VolEnv_Insert(VolEnv, range_start, range_len, srate, envbuf, pnt_cnt); // Envelope from envbuf
+    //-----------------------------------
+    playrate != 1 ? (
+      SetMediaItemTakeInfo_Value(take, "D_PLAYRATE", playrate); // restore orig playrate
+      SetMediaItemInfo_Value(item, "D_LENGTH", item_len);  // restore orig length
+    );          
+    UpdateTimeline();
+    UpdateArrange(); 
+  );  
+
+);
+
+//**************************************************************************************************
+//**************************************************************************************************
+function MAIN()
+  local(item_cnt, item_idx, item, take, PCM_source, srate, n_chans, VolEnv)  
+( 
+  start_time = time_precise(); // start time test
+  //--------------------------  
+  item_cnt = CountSelectedMediaItems(0);
+  item_idx = 0;
+  loop(item_cnt,
+      //-- item, take data -------------
+      item = GetSelectedMediaItem(0, item_idx);
+      take = GetActiveTake(item);
+      PCM_source = GetMediaItemTake_Source(take);
+      srate = GetMediaSourceSampleRate(PCM_source);
+      n_chans = GetMediaSourceNumChannels(PCM_source);
+      VolEnv = GetTakeEnvelopeByName(take,"Volume");
+      //-- rebuild - create envelope ---
+      VolEnv && ValidatePtr2(0, VolEnv, "TrackEnvelope*") && srate ? (
+        RebuildVolEnvelope(item, take, srate, n_chans, VolEnv);
+      );
+      item_idx+=1;
+  );
+  //--------------------------
+  proc_time_ms  = (time_precise() - start_time)*1000; // end time test
+);
+
+
+//--------------------------------------
+function ProjectChange()
+  local(cur_cnt)
+(
+  cur_cnt = GetProjectStateChangeCount(0); 
+  cur_cnt != proj_change_cnt ? (proj_change_cnt = cur_cnt;);
+);
+
+//--------------------------------------
+function Draw_Controls()
+(
+  //-- GetSet Envelopes ------
+  // Чтобы не проверять VolEnv постоянно, на изм. проекта, вроде норм
+  ProjectChange() ? VolEnv_GetActVisState(); 
+  //----------------
+  ActEnv.CheckBox_Draw();
+  VisEnv.CheckBox_Draw();
+  UpdMode.CheckBox_Draw();
+  //----------------
+  ActEnv.isChanged ? VolEnv_SetActVisState("act", ActEnv.val); 
+  VisEnv.isChanged ? VolEnv_SetActVisState("vis", VisEnv.val);
+    
+  //-- Controls --------------
+  Thresh.DW_Draw();
+  LPFreq.DW_Draw();
+  HPFreq.DW_Draw();
+  PreComp.DW_Draw();
+  Attack.DW_Draw();
+  Release.DW_Draw();
+  Ratio.DW_Draw();
+  Interval.DW_Draw();
+  Gain.DW_Draw();
+  
+  //-- OnChange --------------
+  UpdMode.val ? (
+    Thresh.isChanged || PreComp.isChanged || 
+    HPFreq.isChanged || LPFreq.isChanged ||
+    Attack.isChanged || Release.isChanged ||
+    Ratio.isChanged ||  Interval.isChanged || 
+    Gain.isChanged ? (
+      RunMain = 1;
+    );
+  ); 
+  
+  //-- OnRelease -------------
+  Thresh.isReleased || PreComp.isReleased || 
+  HPFreq.isReleased || LPFreq.isReleased ||
+  Attack.isReleased || Release.isReleased ||
+  Ratio.isReleased || Interval.isReleased || 
+  Gain.isReleased ? (
+    Undo_OnStateChange("Envelope-based Compressor");
+    RunMain = 1;
+  );
+  
+  //-- UpdMode info ----------
+  UpdMode.val ? (
+    UpdMode.r = proc_time_ms < 150 ? 0.667 : 1;
+    UpdMode.lbl = sprintf(#, "%s(%d %s)", "RT Update", proc_time_ms, "ms");
+  ) : (
+    UpdMode.r = 0.667;
+    UpdMode.lbl = "Allow RT Update";
+  ); 
+  
+  //-- DevMenu ---------------
+  DevMode ? (
+    gfx_set(0.8,0,0); gfx_x = gfx_y = 5;
+    gfx_drawchar(0x2605);
+    //DevMenu.isActive ? DevMenu.Draw();
+  );
+   
+);
+
+
+//-- init ------------------------------
+function gui.init()
+  instance(x, y, w, h, dock, font1)
+( 
+  x = 100; y = 500; w = 520; h = 280; dock = 0; 
+  gfx_init("Envelope-based Compressor",w,h,dock,x,y);
+  gfx_clear = 0x141414;
+  //----------------
+  font1 = 1; 
+  font1.name = "Verdana";
+  font1.sz = 13; 
+  gfx_setfont(font1, font1.name, font1.sz);
+  DevMode = 0;
+  init_state = 1;
+);
+
+
+//-- mainloop --------------------------
+function mainloop()
+(
+  GetMouseState(); // Get mouse
+  Draw_Controls();
+  RunMain ? ( 
+    MAIN(); 
+    RunMain = 0;
+    RunMain_cnt+=1; // Change cnt 
+  ); 
+  
+  SetMouseLastState(); // Update mouse last state
+  gfx_update(); // Update gfx window
+  gfx_char = gfx_getchar();
+  gfx_char==68 ? DevMode = !DevMode; // -- Shift + D
+  gfx_char==32 ? Main_OnCommand(40044, 0); //-- play
+  gfx_char >= 0 ? defer("mainloop();");    //-- defer
+);
+
+//--------------------------------------
+//--- Run Script -----------------------
+//--------------------------------------
+gui.init();
+CreateControls();
+mainloop();
