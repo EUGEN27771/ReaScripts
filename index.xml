@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="EUGEN27771-ReaScripts" commit="7ff4659662d747c3c1c00b50d8a889edec839cae">
+<index version="1" name="EUGEN27771-ReaScripts" commit="46eedacb679218621d2e3b317345cf5f0baaa19e">
   <category name="FX">
     <reapack name="gen_Save Preset for last touched FX.lua" type="script">
       <version name="1.02" author="EUGEN27771" time="2016-06-24T22:51:03Z">
@@ -219,6 +219,9 @@
     <reapack name="gen_True Stereo Takes Test.eel" type="script">
       <version name="1.04" author="EUGEN27771" time="2016-11-13T23:25:30Z">
         <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/33239e094ab1f28344ae8ff2af823b0f021fa436/Various/gen_True%20Stereo%20Takes%20Test.eel</source>
+      </version>
+      <version name="1.05" author="EUGEN27771" time="2017-09-30T10:50:20Z">
+        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/46eedacb679218621d2e3b317345cf5f0baaa19e/Various/gen_True%20Stereo%20Takes%20Test.eel</source>
       </version>
     </reapack>
     <reapack name="gen_WAVE Generator.lua" type="script">
