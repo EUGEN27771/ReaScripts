@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="EUGEN27771-ReaScripts" commit="46eedacb679218621d2e3b317345cf5f0baaa19e">
+<index version="1" name="EUGEN27771-ReaScripts" commit="6993c62a7ca009ef5519edec4dd24b7600af7f76">
   <category name="FX">
     <reapack name="gen_Save Preset for last touched FX.lua" type="script">
       <version name="1.02" author="EUGEN27771" time="2016-06-24T22:51:03Z">
@@ -227,6 +227,19 @@
     <reapack name="gen_WAVE Generator.lua" type="script">
       <version name="1.02" author="EUGEN27771" time="2016-06-24T13:20:19Z">
         <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/fc949fec5c3bdab50ec975e682e166124904a7b2/Various/gen_WAVE%20Generator.lua</source>
+      </version>
+    </reapack>
+  </category>
+  <category name="Various/Envelope-based Compressor">
+    <reapack name="gen_Envelope-based Compressor v2.eel" type="script">
+      <version name="2.1" author="EUGEN27771" time="2017-12-20T20:31:27Z">
+        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/6993c62a7ca009ef5519edec4dd24b7600af7f76/Various/Envelope-based%20Compressor/gen_Envelope-based%20Compressor%20v2.eel</source>
+        <source file="inc/AudioFunctions.eel">https://github.com/EUGEN27771/ReaScripts/raw/6993c62a7ca009ef5519edec4dd24b7600af7f76/Various/Envelope-based%20Compressor/inc/AudioFunctions.eel</source>
+        <source file="inc/DevMenu.eel">https://github.com/EUGEN27771/ReaScripts/raw/6993c62a7ca009ef5519edec4dd24b7600af7f76/Various/Envelope-based%20Compressor/inc/DevMenu.eel</source>
+        <source file="inc/MiniGui.eel">https://github.com/EUGEN27771/ReaScripts/raw/6993c62a7ca009ef5519edec4dd24b7600af7f76/Various/Envelope-based%20Compressor/inc/MiniGui.eel</source>
+        <source file="inc/Mouse.eel">https://github.com/EUGEN27771/ReaScripts/raw/6993c62a7ca009ef5519edec4dd24b7600af7f76/Various/Envelope-based%20Compressor/inc/Mouse.eel</source>
+        <source file="inc/Presets.eel">https://github.com/EUGEN27771/ReaScripts/raw/6993c62a7ca009ef5519edec4dd24b7600af7f76/Various/Envelope-based%20Compressor/inc/Presets.eel</source>
+        <source file="inc/TextField.eel">https://github.com/EUGEN27771/ReaScripts/raw/6993c62a7ca009ef5519edec4dd24b7600af7f76/Various/Envelope-based%20Compressor/inc/TextField.eel</source>
       </version>
     </reapack>
   </category>
