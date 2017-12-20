@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="EUGEN27771-ReaScripts" commit="dfdfb29cf28d4ea6d17ff17f0cd265e119fdf99a">
+<index version="1" name="EUGEN27771-ReaScripts" commit="549479d75a918d10efb30c3594573841b5cf3247">
   <category name="FX">
     <reapack name="gen_Save Preset for last touched FX.lua" type="script">
       <version name="1.02" author="EUGEN27771" time="2016-06-24T22:51:03Z">
@@ -183,11 +183,6 @@
       </version>
       <version name="1.02" author="EUGEN27771" time="2016-09-24T22:38:40Z">
         <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/68416880106a6fa8a597452a773b362f2b2edf39/Various/gen_Drum%20trigger.lua</source>
-      </version>
-    </reapack>
-    <reapack name="gen_Envelope-based Compressor v2.eel" type="script">
-      <version name="2.00" author="EUGEN27771" time="2017-09-16T05:32:56Z">
-        <source main="true">https://github.com/EUGEN27771/ReaScripts/raw/7ff4659662d747c3c1c00b50d8a889edec839cae/Various/gen_Envelope-based%20Compressor%20v2.eel</source>
       </version>
     </reapack>
     <reapack name="gen_Envelope-based Compressor.eel" type="script">
