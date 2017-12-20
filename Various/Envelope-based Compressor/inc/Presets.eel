@@ -1,0 +1,291 @@
+/* 
+   * Author: EUGEN27771
+   * Author URI: http://forum.cockos.com/member.php?u=50462
+   * Licence: GPL v3
+   * Version: 1.0
+   * NoIndex: true
+*/
+
+//****************************************************************************************
+function SetRGB(RGB, a)
+(
+  gfx_r = (RGB & 0xFF0000) / 16777216;
+  gfx_g = (RGB & 0x00FF00) / 65536;
+  gfx_b = (RGB & 0x0000FF) / 256;
+  gfx_a = a;
+);
+
+function SetRGB(RGB)
+(
+  SetRGB(RGB, 1);
+);
+
+//****************************************************************************************
+//****************************************************************************************
+//================================================
+/*Create/update preset-list string(like gfx_showmenu() string).
+For example - "Name1|Name2|... etc". Return this string.
+Эта же строка будет использоваться для GetIdxByName, GetNameByIdx.*/
+function Presets.UpdateList()
+  local(file, pattern, line, preset_name)
+(
+  #this.list = ""; // init list
+  this.preset_cnt = 0; // init cnt
+  (file = fopen(#this.path, "rb")) ? (
+    pattern = "%s=*"; // preset line pattern
+    line = #; // tmp str for file line
+    preset_name = #; // tmp str for preset name
+    while(!feof(file)) (
+      fgets(file, line); // get line
+      match(pattern, line, preset_name) ? (
+        #this.list+=strcat(preset_name, "|");
+        this.preset_cnt +=1;
+      );
+    );
+    fclose(file);
+  );
+  #this.list; // ret
+);
+
+//================================================
+//-- устан.(не загружает!) текущий пресет(имя, отображаемое в меню)
+//-- if curpresetname = ""(empty string) then set "No Preset"
+function Presets.SetCurPresetName(preset_name)
+(
+  !strcmp(preset_name, "") ? preset_name = "No Preset";
+  #this.curpresetname = preset_name;
+);
+
+//================================================
+//-- возвр. имя пресета по индекс, если idx>кол-ва - имя последнего.
+function Presets.GetNameByIdx(preset_idx)
+  local(len, pos, s, e, i)
+(
+  len = strlen(#this.list);
+  pos = s = e = i = 0;
+  while(pos < len && i <= preset_idx) (
+    str_getchar(#this.list, pos) == 124 ? (s = e; e = pos+1; i+=1;);
+    pos += 1; 
+  );
+  //i == preset_idx ?
+  strcpy_substr(#, #this.list, s, e-s-1); // ret preset_name
+);
+
+//================================================
+//-- возвр. индекс пресета по имени(либо -1, если не найден)
+function Presets.GetIdxByName(preset_name)
+  local(len, pos, i, preset_idx, pattern)
+(
+  len = strlen(#this.list);
+  pos = i = 0;
+  preset_idx = -1;
+  pattern = sprintf(#, "%s*", preset_name);
+  match(pattern, #this.list) ? preset_idx = 0;
+  while(pos < len && preset_idx < 0) (
+    str_getchar(#this.list, pos) == '|' ? (
+      match(pattern, strcpy_from(#, #this.list, pos+1)) ? preset_idx = i+1;
+      i+=1; 
+    );
+    pos += 1; 
+  );
+  preset_idx; // ret idx
+);
+
+//================================================
+function Presets.Load(preset_name)
+  local(preset_data)
+( 
+  preset_data = #;
+  (extension_api("BR_Win32_GetPrivateProfileString", this.section, preset_name, "", #this.path, preset_data)) ? (
+    Presets.SetCurPresetName(preset_name);
+    preset_data; // ret
+  );
+);
+
+//================================================
+function Presets.Save(preset_name, preset_data)
+  local(pos, c)
+(
+  pos = 0;
+  while(pos < strlen(preset_name)) (
+    c = str_getchar(preset_name, pos);
+    // Лучше оставить тупо буквы-цифры?
+    c=='|' || c=='#' || c=='!' || c=='<' || c=='>' || c=='=' ? str_delsub(preset_name, pos, 1) : pos+=1;
+  );
+  
+  extension_api("BR_Win32_WritePrivateProfileString", this.section, preset_name,  preset_data, #this.path) ? (
+    Presets.SetCurPresetName(preset_name); 
+    Presets.UpdateList();
+  );  
+);
+
+//================================================
+//--Var1(read each line) ---
+/*
+function Presets.Delete(preset_name)
+  local(file, file_len, pattern, tmp_str, str_start, str_len)
+(  
+  (file = fopen(#this.path, "rb")) ? (
+    pattern = sprintf(#, "%s=*", preset_name);
+    tmp_str = #; // tmp str for operations
+    while(!feof(file) && !match(pattern, tmp_str)) (
+      fgets(file, tmp_str);
+    );
+    str_len = strlen(tmp_str); // preset str len
+    str_start = ftell(file) - str_len; // preset str start
+    fseek(file, 0, 1); // to file end
+    file_len = ftell(file); // get file len
+    fseek(file, 0, -1); // to file start for reading
+    fread(file, tmp_str, file_len); // Read all to tmp_str
+    fclose(file);
+    
+    (file = fopen(#this.path, "wb")) ? (
+      str_delsub(tmp_str, str_start, str_len); // Del preset substr
+      fwrite(file, tmp_str, 0); // Write
+      fflush(file);
+      fclose(file);
+    );
+  );
+);
+*/
+
+//================================================
+// Rename or Delete preset, return true if successfully
+// preset_new_name = ""(EmptyString) for Delete preset
+function Presets.RenameOrDelete(preset_name, preset_new_name)
+  local(file, file_data, pattern, data1, preset_data, data2)
+(  
+  (file = fopen(#this.path, "rb")) ? (
+    file_data = #; // data tmp str
+    fread(file, file_data, 1024^2 * 10); // Read all, max 10M
+    fclose(file);
+    //-- pattern for match = "%0sPresetName=%0S\n%0s" --
+    pattern = sprintf(#, "%s%s%s", "%0s", preset_name, "=%0S\n%0s");
+    data1 = #; preset_data = #; data2 = #;
+    match(pattern, file_data,  data1, preset_data, data2) ? (
+      (file = fopen(#this.path, "wb")) ? (
+        fwrite(file, data1, 0); // Write data1
+        strcmp(preset_new_name, "") ? ( // Write preset_data, if Rename
+          fwrite(file, sprintf(#, "%s=%s\n", preset_new_name, preset_data), 0); 
+        );
+        fwrite(file, data2, 0); // Write data2
+        fflush(file);
+        fclose(file);
+        Presets.SetCurPresetName(preset_new_name); 
+        Presets.UpdateList();
+        1; // return true if successfully
+      );
+    );
+  );
+
+);
+
+
+//----------------------------------------------------------
+//-- Init Preset Menu --------------------------------------
+//----------------------------------------------------------
+function Presets.MenuInit(x,y,w,h, col_bg, col_font, path)
+(
+  this.Menu.x = x; 
+  this.Menu.y = y; 
+  this.Menu.w = w; 
+  this.Menu.h = h;
+  this.Menu.col_bg = col_bg; 
+  this.Menu.col_font = col_font;
+  
+  #this.path = path; // путь к файлу пресетов
+  this.section = "Presets"; // секция с пресетами
+  Presets.SetCurPresetName(""); // Empty str = "No Preset"
+  Presets.UpdateList();
+);
+
+//----------------------------------------------------------
+//-- Draw Preset Menu --------------------------------------
+//----------------------------------------------------------
+function Presets.MenuDraw()
+  local(x,y,w,h, x1,y1,w1,h1, x2,y2,w2,h2, x3,y3,w3,h3, x4,y4,w4,h4, col_bg, col_font,
+        idx, menu_ret, ui_retval_str, ui_ret)
+(
+  x = this.Menu.x; 
+  y = this.Menu.y; 
+  w = this.Menu.w; 
+  h = this.Menu.h;
+  col_bg = this.Menu.col_bg; 
+  col_font = this.Menu.col_font;
+  
+  //-- coords ----------------
+  x1 = x;         w1 = h;       //-- prev preset btn
+  x2 = x+h;       w2 = w-h*3;   //-- curpreset, list btn 
+  x3 = x+w-h*2;   w3 = h;       //-- next preset btn
+  x4 = x+w-h;     w4 = h;       //-- menu btn
+  // y и h - везде равны - поправить(убрать 1,2,3,4)
+  y1 = y2 = y3 = y4 = y;
+  h1 = h2 = h3 = h4 = h;
+
+  gfx_setfont(2, "Verdana", h-7); //-- presets font
+
+  SetRGB(col_bg); //-- bg color;
+  gfx_rect(x,y,w,h, 1);    //-- bg rect
+  SetRGB(col_font, 0.15);  //-- frames col
+  gfx_rect(x1,y1,w1,h1,0); //-- prev rect
+  gfx_rect(x2,y2,w2,h2,0); //-- cur rect
+  gfx_rect(x3,y3,w3,h3,0); //-- next rect
+  gfx_rect(x4,y4,w4,h4,0); //-- menu rect
+
+  SetRGB(col_font);
+  gfx_x = x1; gfx_y = y1;
+  gfx_drawstr("<", 5, x1+w1, y1+h1); //-- prev "<"
+  gfx_x = x2; gfx_y = y2;
+  gfx_drawstr(#this.curpresetname, 5, x2+w2, y2+h2); //-- "curpreset"
+  gfx_x = x3; gfx_y = y3;
+  gfx_drawstr(">", 5, x3+w3, y4+h3); //-- next ">"
+  gfx_x = x4; gfx_y = y4;
+  gfx_drawstr("+", 5, x4+w4, y4+h4); //-- menu "+"
+  
+  
+  //--------------------------
+  this.action = this.name = ""; // def state
+    
+  mouse_down && this.preset_cnt ? (
+    //-- Menu List -----------
+    mouseINrect(x2,y2,w2,h2) ? ( //-- mouse down in "curpreset" rect
+      gfx_x = x2; gfx_y = y2+h2;
+      menu_ret = gfx_showmenu(#this.list);
+      menu_ret ? (this.action = "Load"; this.name = Presets.GetNameByIdx(menu_ret-1);); // Load
+    );
+    //-- Prev Preset ---------
+    mouseINrect(x1,y1,w1,h1) ? ( //-- mouse down in prev("<") rect
+      idx = Presets.GetIdxByName(#this.curpresetname);
+      idx <= 0 ? idx = this.preset_cnt;
+      this.action = "Load"; this.name = Presets.GetNameByIdx(idx-1); // Load Prev
+    );
+    //-- Next Preset ---------
+    mouseINrect(x3,y3,w3,h3) ? ( //-- mouse down in next(">") rect
+      idx = Presets.GetIdxByName(#this.curpresetname);
+      idx >= this.preset_cnt-1 ? idx = -1;
+      this.action = "Load"; this.name = Presets.GetNameByIdx(idx+1); // Load Next
+    );
+  );
+  
+  //-- Menu Button -----------
+  mouse_down && mouseINrect(x4,y4,w4,h4) ? ( //-- mouse down in menu("+") rect
+    gfx_x = x4; gfx_y = y4+h4;
+    menu_ret = gfx_showmenu("Save Preset|Rename Preset|Delete Preset");
+    ui_retval_str = strcpy(#, #this.curpresetname); // string for retval, def = curpreset
+    menu_ret == 1 ? (  //-- Save
+      ui_ret = GetUserInputs("Save Preset", 1, "Preset name:,extrawidth=200", ui_retval_str);
+      ui_ret ? (this.action = "Save"; this.name = ui_retval_str);
+    );
+    menu_ret == 2 ? (  //-- Rename
+      ui_ret = GetUserInputs("Rename Preset", 1, "Preset name:,extrawidth=200", ui_retval_str);
+      ui_ret ? (this.action = "Rename"; this.name = ui_retval_str);
+    );
+    menu_ret == 3 ? (  //-- Delete
+      this.action = "Delete"; this.name = #this.curpresetname;
+    );
+  );
+
+  //-- Confirm action, name --
+  strcmp(this.action, "") && strcmp(#this.curpresetname, ""); // return true if need actions
+
+);

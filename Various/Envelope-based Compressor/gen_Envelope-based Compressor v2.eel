@@ -1,0 +1,542 @@
+/* 
+   * ReaScript Name:Envelope-based Compressor
+   * EEL script for Cockos REAPER
+   * Author: EUGEN27771
+   * Author URI: http://forum.cockos.com/member.php?u=50462
+   * Licence: GPL v3
+   * Version: 2.1
+   * Provides: inc
+*/
+
+@import inc/AudioFunctions.eel
+@import inc/MiniGui.eel
+@import inc/Presets.eel
+
+//Кроме пометок - сделать более четкую атаку.
+//Для этого interval после срабатывания сбросить(0), и постепенно вернуть в его значение.
+
+//**************************************************************************************************
+//*** Main part ************************************************************************************
+//**************************************************************************************************
+//----------------------------------------------------------------------------------------
+//-- Create Gui controls -----------------------------------------------------------------
+//----------------------------------------------------------------------------------------
+function CreateControls()
+  local(r,g,b,a)
+(
+  r = 170/255; g = 140/255; b = 90/255; a = 1; // change if need...
+  //-------------
+  Thresh.DW_New(1, "Slider", "V",  40,30,20,250, r,g,b,a, "Threshold", "dB",    0, -60,  6, 0.1, 0);
+  Gain.DW_New(2,   "Slider", "V", 460,30,20,250, r,g,b,a, "Out Gain",  "dB",    0, -24, 18, 0.1, 0);
+  //-------------
+  PreComp.DW_New(3,  "Slider", "H", 160,40,200,20,  r,g,b,a, "Pre-Comp",  "ms",    0,   0,  100,  0.1, 0);
+  Attack.DW_New(4,   "Slider", "H", 160,70,200,20,  r,g,b,a, "Attack",    "ms",   10,   1,  200,  0.1, 0);
+  Release.DW_New(5,  "Slider", "H", 160,100,200,20, r,g,b,a, "Release",   "ms",  100,   3,  500,    1, 0);
+  Ratio.DW_New(6,    "Slider", "H", 160,130,200,20, r,g,b,a, "Ratio",    ": 1",    4,   1,   20, 0.01, 1);
+  RMSsize.DW_New(7,  "Slider", "H", 160,160,200,20, r,g,b,a, "RMS size",  "ms",    5,   0, 1000,  0.1, 1);
+  
+  Interval.DW_New(8, "Slider", "H", 160,190,200,20, r,g,b,a, "Interval",  "ms",    5, 0.5,  100,  0.1, 0);
+  
+  //-------------
+  HPFreq.DW_New(9,  "Knob", "V", 100,240,40,40, r,g,b,a, "Hipass",  "Hz",       0,  0, 20000,   1, 1);
+  LPFreq.DW_New(10, "Knob", "V", 170,240,40,40, r,g,b,a, "Lowpass", "Hz",   20000,  1, 20000,   1, 1);
+  //-------------
+  ActEnv.CheckBox_New(11,  260,230,18,18, r,g,b,a, "Activate Envelopes", 0);
+  VisEnv.CheckBox_New(12,  260,251,18,18, r,g,b,a, "Show Envelopes", 0);
+  UpdMode.CheckBox_New(13, 260,273,18,18, r,g,b,a, "Allow RT Update", 0);
+);
+
+
+//----------------------------------------------------------------------------------------
+//-- Get Active-Visible State VolEnv(sel items, takes) -----------------------------------
+//----------------------------------------------------------------------------------------
+function VolEnv_GetActVisState()
+  local(item_cnt, item_idx, item, take, VolEnv, BR_Env,
+        BR_Env, active,visible,
+        armed, inLane,laneHeight, 
+        defShape, minVal,maxVal,centerVal, type, faderScaling,
+        Allactive, AllVisible)   
+(
+  Allactive = AllVisible = 0;
+  item_cnt = CountSelectedMediaItems(0);
+  item_idx = 0;
+  loop(item_cnt,
+      item = GetSelectedMediaItem(0, item_idx);
+      take = GetActiveTake(item);
+      VolEnv = GetTakeEnvelopeByName(take,"Volume"); // Get take "Volume" envelope
+
+      //-- активные и видимые по состоянию --
+      VolEnv && ValidatePtr2(0, VolEnv, "TrackEnvelope*") ? ( // ValidatePtr - пров. указатель
+        BR_Env = extension_api("BR_EnvAlloc", VolEnv, 0);
+        extension_api("BR_EnvGetProperties", BR_Env, active, visible, armed, inLane,laneHeight, 
+                      defShape, minVal,maxVal,centerVal, type, faderScaling);
+        active ? AllActive += 1;  // All active
+        visible ? AllVisible += 1; // All visible
+        extension_api("BR_EnvFree", BR_Env, 0);
+      );
+      
+      item_idx+=1;
+  );
+  
+  // -- Сравнивает кол-во айтемов и огибающих, устанавливает знач. CheckBox
+  // -- устанавливать здесь плохо, перенести вниз потом
+  AllActive == item_cnt ? ActEnv.val = 1 : ActEnv.val = 0;
+  AllVisible == item_cnt ? VisEnv.val = 1 : VisEnv.val = 0;
+
+);
+
+//----------------------------------------------------------------------------------------
+//-- Set Act-Vis State for VolEnv(sel items, takes) --------------------------------------
+// mode must be "act" or "vis"; val = 0 or 1 ---------------------------------------------
+//----------------------------------------------------------------------------------------
+function VolEnv_SetActVisState(mode, val)
+  local(item_cnt, item_idx, item, take, VolEnv, BR_Env,
+        BR_Env, active,visible,armed, inLane,laneHeight, 
+        defShape, minVal,maxVal,centerVal, type, faderScaling)   
+(
+  item_cnt = CountSelectedMediaItems(0);
+  item_cnt ? Undo_OnStateChange("Envelope-based Compressor, Act-Vis Env");
+  item_idx = 0;
+  loop(item_cnt,
+      item = GetSelectedMediaItem(0, item_idx);
+      take = GetActiveTake(item);
+      VolEnv = GetTakeEnvelopeByName(take,"Volume"); // Get take "Volume" envelope
+      
+      //-- Set act,vis depend of mode(if VolEnv exists) -----
+      VolEnv && ValidatePtr2(0, VolEnv, "TrackEnvelope*") ? (
+        BR_Env = extension_api("BR_EnvAlloc", VolEnv, 0);
+        extension_api("BR_EnvGetProperties", BR_Env, active,visible,armed, inLane,laneHeight, 
+                      defShape, minVal,maxVal,centerVal, type, faderScaling);
+        mode == "act" ? active  = val; // set active
+        mode == "vis" ? visible = val; // set visible
+        extension_api("BR_EnvSetProperties", BR_Env, active,visible,armed, inLane,laneHeight, 
+                      defShape, faderScaling);
+        extension_api("BR_EnvFree", BR_Env, 1);
+      ) : (
+        //-- Create(if VolEnv no exist) ----
+        Main_OnCommand(NamedCommandLookup("_S&M_TAKEENV1"), 0);
+        VolEnv = GetTakeEnvelopeByName(take,"Volume");
+      );
+      item_idx+=1;
+  );
+  
+);
+
+//----------------------------------------------------------------------------------------
+//--- Insert volume envelope from envbuf -------------------------------------------------
+//----------------------------------------------------------------------------------------
+function VolEnv_Insert(VolEnv, range_start, range_len, srate, envbuf, pnt_cnt)
+  local(PreComp, Gain, env_mode, shape,tens,sel,nosort, roffs, val,val1, rs_val,re_val, i, pos)     
+(
+  PreComp = PreComp.val/1000;
+  Gain = DB2VAL(Gain.val);
+  //--------------------------
+  env_mode = GetEnvelopeScalingMode(VolEnv);      // get VolEnv scaling mode
+  val1 = ScaleToEnvelopeMode(env_mode, 1 * Gain); // Scaled  val=1
+  //shape = 2; tens = 0; sel = 0; nosort = 1;     // def for new compss points 1
+  shape = 0; tens = 0; sel = 0; nosort = 1;       // def for new compss points 2
+  
+  //-- Del Old points, Ins points at edges(use edges values) ---------
+  Envelope_Evaluate(VolEnv, range_start, srate, 0, rs_val);           // get env val at start
+  Envelope_Evaluate(VolEnv, range_start+range_len, srate, 0, re_val); // get env val at end
+  DeleteEnvelopePointRange(VolEnv, range_start-0.0001, range_start+range_len-PreComp+0.0001); // Del Old points 
+  //--------------------------
+  // PreComp здесь отнимается от края, от точек и т.п, так как был учтен в range_len!
+  // Можно для ясности сделать разные переменные range_len и range_len2(c PreComp)
+  // На айтемах, целиком входящих в range, по идее, можно не ставить точки rs и re.
+  // Еще хороший вариант не ставить точки rs и re, если первая/посл. точки буфера близки к началу/концу range. 
+  roffs = 0.0001; // микро-отступы для сохр. краев range, судя по чанку, могут быть и меньше намного, пока так! 
+  InsertEnvelopePoint(VolEnv, range_start, rs_val, 0, 0, 0, 1);      // Insert point=curval at start
+  InsertEnvelopePoint(VolEnv, range_start+roffs, val1, 0, 0, 0, 1);  // Insert point=1 at start
+  InsertEnvelopePoint(VolEnv, range_start+range_len-PreComp-roffs, val1, 0, 0, 0, 1);  // Insert point=1 at end
+  InsertEnvelopePoint(VolEnv, range_start+range_len-PreComp, re_val, 0, 0, 0, 1); // Insert point=curval at end
+  //--------------------------
+  i = 0;
+  while(envbuf[i] <= range_start + PreComp + roffs && i < pnt_cnt)( 
+    i+=2; pnt_cnt-=2; // Если точки выходят за range_start!
+  );
+  //--------------------------
+  loop(pnt_cnt*0.5,
+    pos = envbuf[i] - PreComp;
+    val = ScaleToEnvelopeMode(env_mode,  envbuf[i+1] * Gain);   // Scale point value
+    InsertEnvelopePoint(VolEnv, pos, val, shape, tens, sel, nosort); // Insert point        
+    i+=2;  
+  );
+  //--------------------------
+  Envelope_SortPoints(VolEnv);
+);
+
+//----------------------------------------------------------------------------------------
+//---  Create envelope point, based on take source audio  --------------------------------
+//----------------------------------------------------------------------------------------
+function ChanMixing(samplebuf, block_size, n_chans)
+  local(smpl, ch_smpl, chan_sum) 
+(
+  smpl = ch_smpl = chan_sum = 0;
+  n_chans > 1 ? (
+    smpl = 0;
+    loop(block_size,
+      ch_smpl = smpl * n_chans;
+        chan_sum = 0; // init
+        loop(n_chans, chan_sum += samplebuf[ch_smpl]; ch_smpl+=1; ); // sum spls
+        samplebuf[smpl] = chan_sum/n_chans; // average value
+      smpl+=1; 
+    );
+  );
+);
+
+//------------------------------------------------
+function VolEnv_Create(take,srate,n_chans, samplebuf,rmsbuf,envbuf,  range_start, n_blocks, block_size, rest_smples)
+  local(AA, starttime_sec, cur_block, smpl, input, fltr_out, rms_out, env_out, comp_out, 
+        trig, last_trig, pnt_cnt, interval, interval_cnt, toffs)
+(
+  interval = ceil(Interval.val/1000 * srate); // min interval beetween comp env points in samples
+  
+  AA = CreateTakeAudioAccessor(take);
+  starttime_sec = range_start; // first block start
+  cur_block = 0;
+  trig = last_trig = 0;
+  pnt_cnt = 0;
+  
+  // -- Audio processing ---------------
+  loop(n_blocks+1,
+      cur_block == n_blocks ? block_size = rest_smples; // last block = rested samples  
+      memset(0, 0, 65536); // clear samplebuffer, чистить обязательно, PreComp остатки вылазят(4% жрет-фигня)
+      GetAudioAccessorSamples(AA, srate, n_chans, starttime_sec, block_size, samplebuf); // get all channels    
+      ChanMixing(samplebuf, block_size, n_chans); // mix channnels if more then one
+        //------------------------------ 
+        smpl=0;
+        loop(block_size,
+            // in, fltr, rms, env, comp - можно одной переменной, что их плодить.
+            input = samplebuf[smpl];  // sample from buf
+            fltr_out = LP.FilterB.Apply(input);    // LP Filtering
+            fltr_out = HP.FilterB.Apply(fltr_out); // HP Filtering
+            rms_out = RMSFollower.Apply(fltr_out); // TEST RMS
+            env_out = EnvFollower.Apply(rms_out);  // Envelope
+            comp_out = CompD.Apply(env_out); // Compressor
+            
+            //-- Add comp point --------
+            comp_out < 1 ? (
+              trig = 1;
+              //interval_cnt > interval ? ( // ">=" вернее, если использовать мин. разрешение для тестов
+              interval_cnt >= interval ? ( // ">=" вернее, если использовать мин. разрешение для тестов  
+                envbuf[pnt_cnt] = starttime_sec + smpl/srate; // position
+                envbuf[pnt_cnt+1] = comp_out; // value
+                pnt_cnt+=2;
+                interval_cnt = 0;
+              );
+              interval_cnt+=1;
+            ) : (
+              trig = 0;
+            );
+            
+            //-- Add trig point --------
+            trig != last_trig ? (
+              //trig ? (toffs = -2; interval_cnt = interval+1;) : toffs = 2; // 2 smpls
+              trig ? (toffs = -1; interval_cnt = interval+1;) : toffs = 1; // 2 smpls, протестить 1 и меньше
+              envbuf[pnt_cnt] = starttime_sec + (smpl + toffs)/srate; // position
+              envbuf[pnt_cnt+1] = 1; // value
+              pnt_cnt+=2;
+              last_trig = trig;
+            );
+            
+            //--------------------------               
+            smpl+=1;   
+        );
+               
+      starttime_sec+=block_size/srate; // next block starttime
+      cur_block+=1; // block counter
+  );
+  
+  DestroyAudioAccessor(AA);
+  
+  pnt_cnt; // return envbuf ptr(num of points/2)
+
+);
+
+
+//----------------------------------------------------------------------------------------
+//--- Rebuild volume envelope ------------------------------------------------------------
+//----------------------------------------------------------------------------------------
+function RebuildVolEnvelope(item, take, srate, n_chans, VolEnv)
+  local(item_start, item_len, sel_start, sel_end, playrate, range_start, range_len, range_len_smpls, 
+        block_size, n_blocks, rest_smples,
+        samplebuf, envbuf, rmsbuf, pnt_cnt,
+        take_vol, item_vol, vol_offs)
+( 
+  item_start = GetMediaItemInfo_Value(item, "D_POSITION"); // item position
+  item_len  = GetMediaItemInfo_Value(item, "D_LENGTH");    // item orig length
+  GetSet_LoopTimeRange(0, 0, sel_start, sel_end, 0);       // get time selection
+  !(sel_end - sel_start) ? (       // if no selection, then
+    sel_start = item_start;        // use item start
+    sel_end = item_start+item_len; // use item end
+  );
+  sel_start = max(sel_start, item_start);         // if sel_start or sel_end out of item, then
+  sel_end   = min(sel_end, item_start+item_len);  // use item_start, item_end respectively
+  //sel_end - sel_start < 0 ? MB("Time selection out of item range!", "Note", 0); 
+   
+  //------------------------------------------------------------------
+  sel_end - sel_start > 0 ? ( 
+    //-- If playrate != 1 --------------------------------------------
+    playrate = GetMediaItemTakeInfo_Value(take, "D_PLAYRATE"); // get take orig playrate
+    playrate != 1 ? (
+      SetMediaItemTakeInfo_Value(take, "D_PLAYRATE", 1); // AA work faster with playrate = 1
+      SetMediaItemInfo_Value(item, "D_LENGTH", item_len*playrate); // len*playrate 
+    );
+    //-- Define work range(with regard orig playrate and + PreComp) --
+    range_start = (sel_start-item_start)*playrate;  // range start
+    // Внимание, range_len длиннее на величину PreComp для завхвата посл. участка, все дальше тоже с учетом!!!
+    range_len = (sel_end + PreComp.val/1000 - sel_start)*playrate; // range_len = range_len + PreComp!!!
+    //----------------------------------
+    range_len_smpls = floor(range_len*srate); // range length to samples
+    //----------------------------------
+    block_size = floor(65536/n_chans);  // full block size(samples), note MAX = 65536!!!
+    n_blocks = floor(range_len_smpls/block_size);         // number of full blocks
+    rest_smples = range_len_smpls - block_size*n_blocks;  // rest of samples(incomplete last block)    
+    take_vol = GetMediaItemTakeInfo_Value(take, "D_VOL"); // regard take volume
+    item_vol = GetMediaItemInfo_Value(item, "D_VOL");     // regard item volume
+    vol_offs = VAL2DB(take_vol*item_vol);  // offset subtracted from the comp threshold
+    
+    //-- Memory buffers -----------------
+    samplebuf = 0;  // buffer for accessor samples
+    rmsbuf = 65536; // buffer for rms-follower
+    envbuf = 65536 + srate; // buffer for volume envelope points
+    //-- Set Values from sliders --------
+    LP.FilterB.SetValues(0, LPFreq.val, srate); // Set LowPass filter, Freq in Hz
+    HP.FilterB.SetValues(1, HPFreq.val, srate); // Set HiPass filter, Freq in Hz
+    //-----------------------------------
+    RMSFollower.SetValues(rmsbuf, RMSsize.val, srate); // Set RMSFollower, size in ms
+    EnvFollower.SetValues(Attack.val, Release.val, srate); // Set EnvFollower, att/rel in ms
+    CompD.SetValues(Thresh.val-vol_offs, Ratio.val); // Set Comp, thresh db, ratio X:1
+    
+    //-- Process audio, create Env ------ 
+    pnt_cnt = VolEnv_Create(take,srate,n_chans, samplebuf,rmsbuf,envbuf, range_start, n_blocks, block_size, rest_smples);
+    VolEnv_Insert(VolEnv, range_start, range_len, srate, envbuf, pnt_cnt); // Envelope from envbuf
+    //-----------------------------------
+    playrate != 1 ? (
+      SetMediaItemTakeInfo_Value(take, "D_PLAYRATE", playrate); // restore orig playrate
+      SetMediaItemInfo_Value(item, "D_LENGTH", item_len);  // restore orig length
+    );          
+    UpdateTimeline();
+    UpdateArrange(); 
+  );  
+
+);
+
+//**************************************************************************************************
+//**************************************************************************************************
+//--------------------------------------
+function ProjectChange()
+  local(cur_cnt)
+(
+  cur_cnt = GetProjectStateChangeCount(0); 
+  cur_cnt != proj_change_cnt ? (proj_change_cnt = cur_cnt;);
+);
+
+//--------------------------------------
+function Script.GetPathAndName()
+  local(filename)
+(
+  get_action_context(filename);
+  !match("%s\\%s", filename, #Script.path, #Script.name) ?
+  match("%s/%s", filename, #Script.path, #Script.name);
+);
+
+//--------------------------------------
+function MAIN()
+  local(item_cnt, item_idx, item, take, PCM_source, srate, n_chans, VolEnv)  
+( 
+  start_time = time_precise(); // start time test
+  //--------------------------  
+  item_cnt = CountSelectedMediaItems(0);
+  item_idx = 0;
+  loop(item_cnt,
+      //-- item, take data -------------
+      item = GetSelectedMediaItem(0, item_idx);
+      take = GetActiveTake(item);
+      PCM_source = GetMediaItemTake_Source(take);
+      srate = GetMediaSourceSampleRate(PCM_source);
+      n_chans = GetMediaSourceNumChannels(PCM_source);
+      VolEnv = GetTakeEnvelopeByName(take,"Volume");
+      //-- rebuild - create envelope ---
+      VolEnv && ValidatePtr2(0, VolEnv, "TrackEnvelope*") && srate ? (
+        RebuildVolEnvelope(item, take, srate, n_chans, VolEnv);
+      );
+      item_idx+=1;
+  );
+  //--------------------------
+  proc_time_ms  = (time_precise() - start_time)*1000; // end time test
+);
+
+//--------------------------------------
+function Draw_Controls()
+(
+  //-- GetSet Envelopes ------
+  // Чтобы не проверять VolEnv постоянно, на изм. проекта, вроде норм
+  ProjectChange() ? VolEnv_GetActVisState(); 
+  //----------------
+  ActEnv.CheckBox_Draw();
+  VisEnv.CheckBox_Draw();
+  UpdMode.CheckBox_Draw();
+  //----------------
+  ActEnv.isChanged ? VolEnv_SetActVisState("act", ActEnv.val); 
+  VisEnv.isChanged ? VolEnv_SetActVisState("vis", VisEnv.val);
+    
+  //-- Controls --------------
+  Thresh.DW_Draw();
+  LPFreq.DW_Draw();
+  HPFreq.DW_Draw();
+  PreComp.DW_Draw();
+  Attack.DW_Draw();
+  Release.DW_Draw();
+  Ratio.DW_Draw();
+  RMSsize.DW_Draw();
+  Interval.DW_Draw();
+  Gain.DW_Draw();
+  
+  //-- OnChange --------------
+  UpdMode.val ? (
+    Thresh.isChanged || PreComp.isChanged || 
+    HPFreq.isChanged || LPFreq.isChanged ||
+    Attack.isChanged || Release.isChanged ||
+    Ratio.isChanged  || RMSsize.isChanged ||
+    Interval.isChanged || Gain.isChanged ? (
+      RunMain = 1;
+    );
+  ); 
+  
+  //-- OnRelease -------------
+  Thresh.isReleased || PreComp.isReleased || 
+  HPFreq.isReleased || LPFreq.isReleased ||
+  Attack.isReleased || Release.isReleased ||
+  Ratio.isReleased  || RMSsize.isReleased ||
+  Interval.isReleased || Gain.isReleased ? (
+    Undo_OnStateChange("Envelope-based Compressor");
+    RunMain = 1;
+  );
+  
+  //-- UpdMode info ----------
+  UpdMode.val ? (
+    UpdMode.r = proc_time_ms < 150 ? 0.667 : 1;
+    UpdMode.lbl = sprintf(#, "%s(%d %s)", "RT Update", proc_time_ms, "ms");
+  ) : (
+    UpdMode.r = 0.667;
+    UpdMode.lbl = "Allow RT Update";
+  ); 
+  
+  //-- DevMenu ---------------
+  DevMode ? (
+    gfx_set(0.8,0,0); gfx_x = gfx_y = 5;
+    gfx_drawchar(0x2605);
+    DevMenu.isActive ? DevMenu.Draw();
+  );
+   
+);
+
+
+//************************************************
+// Нужно прикинуть, что делать с пресетами в случае доб. настроек.
+//--------------------------------------
+function GetPreset()
+(
+  sprintf(#, "%f %f %f %f %f %f %f %f %f %f", 
+    Thresh.val, 
+    PreComp.val, 
+    HPFreq.val,
+    LPFreq.val, 
+    Attack.val,
+    Release.val, 
+    Ratio.val,
+    RMSsize.val,
+    Interval.val,
+    Gain.val;
+  );
+);
+
+//--------------------------------------
+function SetPreset(preset_data)
+  local(v1,v2,v3,v4,v5,v6,v7,v8,v9,v10)
+(
+  match("%f %f %f %f %f %f %f %f %f %f", preset_data, v1,v2,v3,v4,v5,v6,v7,v8,v9,v10) ? (
+    Thresh.DW_SetVal(v1); 
+    PreComp.DW_SetVal(v2); 
+    HPFreq.DW_SetVal(v3);
+    LPFreq.DW_SetVal(v4); 
+    Attack.DW_SetVal(v5);
+    Release.DW_SetVal(v6); 
+    Ratio.DW_SetVal(v7);
+    RMSsize.DW_SetVal(v8); 
+    Interval.DW_SetVal(v9);
+    Gain.DW_SetVal(v10);
+  );
+);
+
+//--------------------------------------
+function Presets()
+ local(preset_data)
+(
+  Presets.MenuDraw() ? (
+    this.action == "Load" ? (
+      preset_data = Presets.Load(this.name);
+      SetPreset(preset_data);
+      Undo_OnStateChange("Envelope-based Compressor");
+      RunMain = 1;
+    );
+    
+    this.action == "Save" ? (
+      preset_data = GetPreset();
+      Presets.Save(this.name, preset_data); 
+    );
+    
+    this.action == "Rename" ? Presets.RenameOrDelete(this.curpresetname, this.name);
+    this.action == "Delete" ? Presets.RenameOrDelete(this.name, ""); // empty str for del
+  );
+);
+
+//-- init ------------------------------
+function gui.init()
+  instance(x, y, w, h, dock, font1)
+( 
+  x = 100; y = 500; w = 520; h = 280+30; dock = 0; 
+  gfx_init("Envelope-based Compressor",w,h,dock,x,y);
+  gfx_clear = 0x141414;
+  //----------------
+  font1 = 1; 
+  font1.name = "Verdana";
+  font1.sz = 13; 
+  gfx_setfont(font1, font1.name, font1.sz);
+  DevMode = 0;
+  init_state = 1;
+);
+
+
+//-- mainloop --------------------------
+function mainloop()
+(
+  GetMouseState(); // Get mouse
+  Draw_Controls();
+  Presets();
+  
+  RunMain ? ( 
+    MAIN(); 
+    RunMain = 0;
+    RunMain_cnt+=1; // Change cnt 
+  ); 
+  
+  SetMouseLastState(); // Update mouse last state
+  gfx_update(); // Update gfx window
+  gfx_char = gfx_getchar();
+  //gfx_char==68 || gfx_char== 194 ? DevMode = !DevMode; // -- Shift + D - don't use!!!
+  gfx_char==32 ? Main_OnCommand(40044, 0); //-- play
+  gfx_char >= 0 ? defer("mainloop();");    //-- defer
+);
+
+//--------------------------------------
+//--- Run Script -----------------------
+//--------------------------------------
+gui.init();
+CreateControls();
+Script.GetPathAndName();
+presets_path = sprintf(#, "%s/%s", #Script.path, "Envelope-based Compressor.presets");
+Presets.MenuInit(130,8,280,20, 0x141414, 0xAA8C5A, presets_path);
+mainloop();

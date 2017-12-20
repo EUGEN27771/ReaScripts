@@ -1,0 +1,592 @@
+/* 
+   * Author: EUGEN27771
+   * Author URI: http://forum.cockos.com/member.php?u=50462
+   * Licence: GPL v3
+   * Version: 1.0
+   * NoIndex: true
+*/
+
+//--- Вынести math отдельно для всего!
+//--- some math functions ----
+function round(x)
+(
+  x < 0 ? ceil(x - 0.5) : floor(x + 0.5);
+);
+//----------------------------
+function roundstp(x, step)
+(
+  x < 0 ? ceil(x/step - 0.5)*step : floor(x/step + 0.5)*step;
+);
+//----------------------------
+function minmax(x, minv, maxv)
+(
+  min(max(x, minv), maxv); 
+);
+
+//----------------------------
+function format_val(val, minval, maxval, valstep)
+(
+  roundstp(minmax(val, minval, maxval), valstep);   
+);
+
+//------------------------------------------------
+//-- DevMenuSpinBox ------------------------------
+//------------------------------------------------
+// Unicode символы косячат на разн. шрифтах и OS!
+function SpinBoxArrows(x, y, w, h)
+  local(cx, cy, offs1, offs2, offs3, x1,x2,x3, y1,y2,y3)
+(
+  //-- Draw arrows(стрелки) --
+  cx = x + floor(h/2); // x-center стрелки
+  cy = y + floor(h/2); // y-center стрелки
+  //gfx_x = cx; gfx_y = cy; gfx_setpixel(1,1,1); // test center
+  offs1 = floor(h*0.15 + 0.5);
+  offs2 = floor(h*0.1 + 0.5);
+  offs3 = floor(h*0.3 + 0.5);
+  // Note - dont't use gfx_triangle()
+  x1 = cx - offs1; x2 = cx; x3 = cx + offs1; // x for up-down
+  y1 = y3 = cy - offs2; y2 = cy - offs3; // y up, y3 = y1 
+  gfx_x = x1; gfx_y = y1;
+  gfx_lineto(x2,y2,1); gfx_lineto(x3,y3,1);gfx_lineto(x1,y1,1); // up
+  y1 = y3 = cy + offs2; y2 = cy + offs3; // y down, y3 = y1 
+  gfx_x = x1; gfx_y = y1;
+  gfx_lineto(x2,y2,1); gfx_lineto(x3,y3,1);gfx_lineto(x1,y1,1); // down);
+);
+
+//======================================
+// Note! Its very simple, only for coords/color
+/* Можно еще убрать isCaptured, isChanged, без особых проблем. 
+Наоборот упростится все... Вопрос только к Link. 
+Хотя Link на нулях и так косячит. */
+function DM_SpinBox(x,y,w,h, lbl, lbl_x, minval, maxval)
+  instance(isCaptured, isChanged)
+  local(val, last_val, K, offs, str)
+( 
+  //--- Get mouse, set val -------------
+  isChanged = 0;
+  val = last_val = this;
+  mouse_up ? isCaptured = 0;
+  
+  mouse_down ? (
+    mouseINrect(x, y, w, h) ? ( // main rect
+      isCaptured = 1; 
+      DM_SpinBox.tmp_val = val;
+    ) : (
+      mouseINrect(x + w, y, h, h) ? ( // arrows rect
+        mouse_down_y < y + h/2 ? val+=1 : val-=1; // up/down 
+        val = minmax(val, minval, maxval);
+        gfx_a = 0.2;
+        gfx_rect(x + w, y, h, h, 1); // arrows click 
+      );
+    );
+  );
+
+  isCaptured ? (
+    mouse_Ctrl ? K = 8 : K = 2;
+    DM_SpinBox.tmp_val += (mouse_last_y-mouse_y)/K;
+    val = round(minmax(DM_SpinBox.tmp_val, minval, maxval));
+  );
+  
+  last_val != val ? isChanged = 1;
+  
+  //-- Draw ----------------------------
+  gfx_a = 0.1;   // arrows bg col alfa
+  gfx_rect(x + w, y, h, h, 1); // arrows bg
+  isCaptured ? gfx_a = 0.3;// field frame col alfa
+  gfx_rect(x, y, w + h, h, 0); // field frame
+  //--------------------------
+  gfx_a = 1;   // arrows, val, lbl col alfa
+  //-- arrows ----------------
+  SpinBoxArrows(x + w, y, w, h);
+  //-- label, value ----------
+  gfx_x = lbl_x; gfx_y = y;
+  gfx_drawstr(lbl, 260, x, y + h); // label
+  str = sprintf(#, "%g", val);
+  gfx_x = x; gfx_y = y;
+  gfx_drawstr(str,  262, x + w - gfx_texth*0.5, y + h); // value
+  //--------------------------
+  this = val; // to this, and return
+);
+
+//------------------------------------------------
+//-- DevMenu CheckBox ----------------------------
+//------------------------------------------------
+function DM_CheckBox(x,y,w,h, lbl)
+  instance(val, isChanged)
+(
+  isChanged = 0;
+  mouse_down && mouseINrect(x,y,w,h) ? (
+    val = !val;
+    isChanged = 1;
+  ); 
+  //----------------
+  val ? (
+    gfx_a = 1; // lbl clr 
+    gfx_x = x + (w - gfx_texth*0.5)/2;
+    gfx_y = y + (h - gfx_texth)/2;
+    gfx_drawchar(10004);
+  );
+  //----------------
+  gfx_x = x + w + gfx_texth*0.5;
+  gfx_y = y;
+  gfx_drawstr(lbl, 260, gfx_x, gfx_y + h);
+  gfx_a = 0.15; // field frame col alfa
+  gfx_rect(x, y, w, h, 0); // field frame
+);
+
+//------------------------------------------------
+//-- String Field --------------------------------
+//------------------------------------------------
+function DM_StrField(x,y,w,h, lbl, lbl_x)
+  local(val, tmp_val)
+(
+  DM_StrField.x = x; 
+  DM_StrField.y = y;  
+  DM_StrField.w = w; 
+  DM_StrField.h = h;  
+  //------------------------------------
+  DM_StrField.mouseClick() && !this.TextField.isActive ? (
+    TextField.Init(x, y, w, h, this);
+    this.TextField.isActive = 1;
+  );
+  //------------
+  this.TextField.isActive ? (
+    TextField.Draw(); 
+    TextField.Apply ? (
+      this = strcpy(#, #TextField.val); 
+      this.TextField.isActive = 0;
+    );
+  );
+  //------------------------------------
+  gfx_set(0.75); // field color
+  gfx_x = lbl_x; gfx_y = y;
+  gfx_drawstr(lbl);
+  gfx_x = x + 5; gfx_y = y;
+  !this.TextField.isActive ? gfx_drawstr(this); // cur val не отображается во время ввода
+  gfx_a = 0.15; // field frame col alfa
+  gfx_rect(x,y,w,h, 0);
+
+);
+
+//------------------------------------------------
+//-- Number Field --------------------------------
+//------------------------------------------------
+function DM_NumField(x,y,w,h, lbl, lbl_x)
+  local(val, tmp_val)
+(
+  val = this; // val >> this
+  DM_NumField.x = x; 
+  DM_NumField.y = y;  
+  DM_NumField.w = w; 
+  DM_NumField.h = h;  
+  //------------------------------------
+  DM_NumField.mouseClick() && !this.TextField.isActive ? ( // для DW нужен dbl, либо по значению
+    TextField.Init(x, y, w, h, sprintf(#,"%.16g", val));
+    this.TextField.isActive = 1;
+  );
+  //------------
+  this.TextField.isActive ? (
+    TextField.Draw(); 
+    TextField.Apply ? (
+    // в obj - обяз. через SetVal(учет min,max,step) и разная логика 
+    match("%f", #TextField.val, tmp_val) ? val = tmp_val;
+    this.TextField.isActive = 0;
+    );
+  );
+  //------------
+  this = val; // this >> val
+  //------------------------------------
+  gfx_set(0.75); // fields color
+  gfx_x = lbl_x; gfx_y = y;
+  gfx_drawstr(lbl);
+  gfx_x = x + 5; gfx_y = y;
+  !this.TextField.isActive ? gfx_drawstr(sprintf(#,"%.16g", val)); // cur val не отображается во время ввода
+  gfx_a = 0.15; // field frame col alfa
+  gfx_rect(x,y,w,h, 0);
+
+);
+
+
+
+//******************************************************************************
+//-- DevMenu -------------------------------------------------------------------
+//******************************************************************************
+
+//************************************************
+function TestGrid(x,y,w,h, gap_w, gap_h)
+  local(tmp_x, tmp_y)
+(
+  gfx_set(0.1, 0.2, 0.1, 0.4);
+  tmp_x = x; tmp_y = y;
+  loop(w/gap_w, gfx_line(tmp_x, tmp_y, tmp_x, tmp_y+h); tmp_x+=gap_w;);
+  tmp_x = x; tmp_y = y;
+  loop(h/gap_h, gfx_line(tmp_x, tmp_y, tmp_x+w, tmp_y); tmp_y+=gap_h;);
+);
+
+//************************************************
+function DevMenu.Window()
+  instance(x,y,w,h, r,g,b,a, font, font_name, font_size, isActive, isCaptured, cap_x, cap_y)
+(
+  //-- window get mouse ----------------
+  mouse_up ? isCaptured = 0;
+  
+  mouse_down ? (
+    mouseINrect(x,y,w-gfx_texth,gfx_texth) ? ( // Drag window
+     isCaptured = 1;
+     cap_x = x; 
+     cap_y = y;
+    );
+    mouseINrect(x+w-gfx_texth,y,gfx_texth,gfx_texth) ? isActive = 0; // Close window
+  );
+  
+  isCaptured ? (
+    cap_x += (mouse_x - mouse_last_x); 
+    cap_y += (mouse_y - mouse_last_y);
+    x = min(max(cap_x, 0), mouse_x);
+    y = min(max(cap_y, 0), mouse_y);
+  );
+  
+  //-- Zoom(Test) ----------------------
+  this.mouseIN() && mouse_wheel ? ( // Zoom window(test)
+   font_size += sign(mouse_wheel);
+   gfx_setfont(font, font_name, font_size);
+  );
+  
+  //-- Draw DevMenu Window -------------
+  gfx_set(0.05);
+  gfx_rect(x,y,w,h,1);  // main bg
+  isCaptured ? gfx_set(0.2) : gfx_set(0.14);
+  gfx_rect(x,y,w,gfx_texth,1); // bg - верхняя полоска
+  gfx_rect(x,y,w,h,0);  // main frame
+  //gfx_set(0.16);
+  //gfx_rect(x+w-gfx_texth,y,gfx_texth,gfx_texth, 1); // bg - close
+  gfx_y = y; 
+  gfx_x = x + gfx_texth; 
+  gfx_set(0.7);
+  gfx_drawstr(this.obj_lbl);
+  gfx_x = x + w - gfx_texth;  // 
+  gfx_drawchar(10006); //  9746  - close - крестик
+ 
+  //-- Self Grid(for test) -------------
+  //mouse_rdown ? showGrid = !showGrid;
+  //showGrid ? TestGrid(x,y,w,h, gfx_texth, gfx_texth);
+  
+);
+
+//************************************************
+function DevMenu.ObjType(x, y)
+  instance(obj_type, obj_dir)
+  local(td_str, menu_str, ret, w, h)
+(  
+  menu_str = "Slider(Horisontal)|Slider(Vertical)|Knob";
+  //------------------------------------
+  td_str = sprintf( #,"%s %s", obj_type, obj_dir);
+  gfx_x = x; gfx_y = y;
+  gfx_set(0.75); // field color
+  gfx_drawstr("Type: ");
+  gfx_drawstr(td_str); // now gfx_x = string_end
+  w = gfx_texth * 8; // v1 fixed w
+  h = gfx_texth;
+  //gfx_rect(x, y, w, h, 0); // test active rect
+  //------------------------------------
+  mouse_down && mouseINrect(x, y, w, h) ? (
+    gfx_x = x; 
+    gfx_y = y + h; 
+    ret = gfx_showmenu(menu_str);
+    ret == 1 ? (obj_type = "Slider"; obj_dir = "H";) : 
+    ret == 2 ? (obj_type = "Slider"; obj_dir = "V";) :
+    ret == 3 ? (obj_type = "Knob";   obj_dir = "V";)
+  );
+  
+);
+
+//************************************************
+function DevMenu.ObjCoords(x, y)
+  instance(obj_x, obj_y, obj_w, obj_h, Link_WH, W2H)
+  local(tmp_x, tmp_y, tmp_w, tmp_h, offs, lbl_x)
+(
+  lbl_x = x;
+  tmp_x = x + gfx_texth;
+  tmp_y = y;
+  tmp_w = gfx_texth*3; //slider3;
+  tmp_h = gfx_texth;   //slider4;
+  offs = tmp_h + floor(tmp_h/4 + 0.5); // offs btwn fieldes
+  gfx_set(0.75); // fields color
+  obj_x.DM_SpinBox(tmp_x, tmp_y,       tmp_w, tmp_h, "X", lbl_x, 4, gfx_w-4);
+  obj_y.DM_SpinBox(tmp_x, tmp_y+=offs, tmp_w, tmp_h, "Y", lbl_x, 4, gfx_w-4);
+  obj_w.DM_SpinBox(tmp_x, tmp_y+=offs, tmp_w, tmp_h, "W", lbl_x, 4, gfx_w-4);
+  obj_h.DM_SpinBox(tmp_x, tmp_y+=offs, tmp_w, tmp_h, "H", lbl_x, 4, gfx_w-4);
+  //------------------------------------
+  Link_WH.DM_CheckBox(x, tmp_y+=offs, tmp_h, tmp_h, "Link W/H");
+  //------------------------------------
+  Link_WH.val ? (
+    obj_w.isChanged ? obj_h = format_val(obj_w / W2H, 4, gfx_h-4, 1) : 
+    obj_h.isChanged ? obj_w = format_val(obj_h * W2H, 4, gfx_h-4, 1) :
+    W2H = obj_w/obj_h;
+  );
+
+);
+
+//************************************************
+function DevMenu.ObjColor(x, y)
+  instance(obj_RR, obj_GG, obj_BB, obj_AA, Link_RGB, R2G, R2B)
+  local(tmp_x, tmp_y, tmp_w, tmp_h, offs, lbl_x)
+(
+  lbl_x = x;
+  tmp_x = x + gfx_texth;
+  tmp_y = y;
+  tmp_w = gfx_texth*3;
+  tmp_h = gfx_texth;
+  offs = tmp_h + floor(tmp_h/4 + 0.5); // offs btwn fieldes
+  gfx_set(0.75); // fields color
+  obj_RR.DM_SpinBox(tmp_x, tmp_y,       tmp_w, tmp_h, "R", lbl_x, 0, 255);
+  obj_GG.DM_SpinBox(tmp_x, tmp_y+=offs, tmp_w, tmp_h, "G", lbl_x, 0, 255);
+  obj_BB.DM_SpinBox(tmp_x, tmp_y+=offs, tmp_w, tmp_h, "B", lbl_x, 0, 255);
+  obj_AA.DM_SpinBox(tmp_x, tmp_y+=offs, tmp_w, tmp_h, "A", lbl_x, 0, 255);
+  //------------------------------------
+  Link_RGB.DM_CheckBox(x, tmp_y+=offs, tmp_h, tmp_h, "Link RGB");
+  
+  //-- Линковку нужно допиливать, косяки на нулях, и желательно limit ---
+  Link_RGB.val ? ( // Разобраться с нулевыми значениями!!!
+    
+    obj_RR.isChanged ? (obj_GG = obj_RR / R2G; obj_BB = obj_RR / R2B;) : 
+    obj_GG.isChanged ? (obj_RR = obj_GG * R2G; obj_BB = obj_RR / R2B;) :
+    obj_BB.isChanged ? (obj_RR = obj_BB * R2B; obj_GG = obj_RR / R2G;) :
+    ( R2G = (obj_RR ? obj_RR : 1)/(obj_GG ? obj_GG : 1);  
+      R2B = (obj_RR ? obj_RR : 1)/(obj_BB ? obj_BB : 1); 
+    );
+    
+    
+    obj_RR.isChanged || obj_GG.isChanged || obj_BB.isChanged ? (
+      obj_RR = round(minmax(obj_RR, 0, 255));
+      obj_GG = round(minmax(obj_GG, 0, 255));
+      obj_BB = round(minmax(obj_BB, 0, 255));
+    );
+  );  
+  
+  //-- Color Rectangle -----------------
+  gfx_set(obj_RR/255, obj_GG/255, obj_BB/255, obj_AA/255);
+  gfx_rect(tmp_x + tmp_w + gfx_texth*2, y, tmp_w, offs*4 - floor(tmp_h/4 + 0.5), 1);
+
+);
+
+
+
+//************************************************
+function DevMenu.ObjValues(x, y)
+  instance(obj_def_val, obj_minval, obj_maxval, obj_valstep)
+  local(tmp_x, tmp_y, tmp_w, tmp_h, offs, lbl_x)
+(
+   //gfx_set(0.75);
+   //gfx_rect(x,y, gfx_texth*8, gfx_texth*4, 0);
+   lbl_x = x;
+   tmp_x = x + gfx_texth*3.5;
+   tmp_y = y;
+   tmp_w = gfx_texth*4; //slider3;
+   tmp_h = gfx_texth;   //slider4;
+   offs = tmp_h + floor(tmp_h/4 + 0.5); // offs btwn fieldes
+   obj_def_val.DM_NumField(tmp_x,     tmp_y,       tmp_w, tmp_h, "Def val", lbl_x);
+   obj_minval.DM_NumField(tmp_x, tmp_y+=offs, tmp_w, tmp_h, "Min val", lbl_x);
+   
+   lbl_x = x + gfx_texth*8;
+   tmp_x = x + gfx_texth*12;
+   tmp_y = y;
+   obj_valstep.DM_NumField(tmp_x, tmp_y,       tmp_w, tmp_h, "Val step", lbl_x);
+   obj_maxval.DM_NumField(tmp_x,  tmp_y+=offs, tmp_w, tmp_h, "Max val", lbl_x);
+   obj_valstep = max(obj_valstep, 0.0001); 
+);
+
+//************************************************
+function DevMenu.ObjLabels(x, y)
+  local(tmp_x, tmp_y, tmp_w, tmp_h, offs, lbl_x)
+(
+   //gfx_set(0.75);
+   //gfx_rect(x,y, gfx_texth*8, gfx_texth*4, 0);
+   lbl_x = x;
+   tmp_x = x + gfx_texth*3;
+   tmp_y = y;
+   tmp_w = gfx_texth*13; //slider3;
+   tmp_h = gfx_texth;   //slider4;
+   offs = tmp_h + floor(tmp_h/4 + 0.5); // offs btwn fieldes
+   DevMenu.obj_lbl.DM_StrField(tmp_x,      tmp_y,       tmp_w, tmp_h,  "Label", lbl_x);
+   DevMenu.obj_val_lbl.DM_StrField(tmp_x,  tmp_y+=offs, tmp_w, tmp_h,  "Val lbl", lbl_x);
+);
+
+
+
+//**********************************************************
+//-- Init DevMenu with obj parameters ----------------------
+//**********************************************************
+function DevMenu.Init(obj*)
+  instance(x,y,w,h, font, font_name, font_size)
+(
+  //----------------------------------
+  //-- Only first init(set x,y,font) -
+  //----------------------------------
+  !this.init ? ( 
+    font = 16; // DevMenu always use font 16
+    font_name = "Verdana"; //"Calibri";
+    font_size = 16; // Font Size
+    gfx_setfont(font, font_name, font_size);  
+    x = gfx_w - font_size*18; 
+    y = 0;
+    this.init = 1; 
+  );
+  //----------------------------------
+  DevMenu.obj_idx = obj.idx;
+  DevMenu.obj_type = obj.type;
+  DevMenu.obj_dir = obj.dir;
+  //-- x,y,w,h -----------------------
+  DevMenu.obj_x = floor(obj.x);
+  DevMenu.obj_y = floor(obj.y);
+  DevMenu.obj_w = floor(obj.w);
+  DevMenu.obj_h = floor(obj.h);
+  //-- r,g,b,a values 0...255 form ---
+  DevMenu.obj_RR = floor(obj.r*255 + 0.5);
+  DevMenu.obj_GG = floor(obj.g*255 + 0.5);
+  DevMenu.obj_BB = floor(obj.b*255 + 0.5);
+  DevMenu.obj_AA = floor(obj.a*255 + 0.5);
+  //----------------------------------
+  DevMenu.obj_lbl = strcpy(#, obj.lbl); 
+  DevMenu.obj_val_lbl = strcpy(#, obj.val_lbl); 
+  //----------------------------------
+  DevMenu.obj_def_val = obj.def_val;
+  DevMenu.obj_minval = obj.minval;
+  DevMenu.obj_maxval = obj.maxval;
+  DevMenu.obj_valstep = obj.valstep;
+  DevMenu.obj_scaling = obj.scaling;
+  //----------------------------------
+  DevMenu.isActive = 1;
+);
+
+//**********************************************************
+//-- Create ObjInitString ----------------------------------
+//**********************************************************
+function DevMenu.CreateObjInitString()
+  local(obj_init_str, obj_varname, idx_type_dir, coords, color, labels, values, tmp,i,c)
+  instance( obj_idx, obj_type, obj_dir,
+    obj_x, obj_y, obj_w, obj_h,  obj_RR, obj_GG, obj_BB, obj_AA,  obj_lbl, obj_val_lbl,
+    obj_def_val, obj_minval, obj_maxval, obj_valstep, obj_scaling )
+(
+  // Удаляет-заменяет в lbl непригодные символы, чтобы использовать как namespace
+  obj_varname = (strlen(obj_lbl) ? strcpy(#, obj_lbl) : sprintf(#, "%s%d", obj_type, obj_idx););
+  //-- if first char invalid -
+  c = str_getchar(obj_varname, 0);
+  !((c>64&&c<91)||(c>96&&c<123)) ? str_setchar(obj_varname, 0, '_');
+  //-- Del invalid chars -----
+  i = strlen(obj_varname);
+  while(i >= 0) (
+    c = str_getchar(obj_varname, i);
+    // 48-57 = "0-9"; 65-90 = "A-Z"; 97-122 = "a-z"; 95 = "."; 46 = "_";
+    !((c>64&&c<91)||(c>96&&c<123)||(c>46&&c<58)||c==95||c==46) ? obj_varname = str_delsub(obj_varname, i, 1);
+    i-=1;
+  );
+  
+  // Берет текущие параметры -----------
+  idx_type_dir = sprintf(#, "%d, \"%s\", \"%s\" ", obj_idx, obj_type, obj_dir);
+  coords = sprintf(#, " %d, %d, %d, %d", obj_x, obj_y, obj_w, obj_h );
+  color = sprintf(#, " %.3f, %.3f, %.3f, %.3f", obj_RR/255, obj_GG/255, obj_BB/255, obj_AA/255);
+  labels = sprintf(#," \"%s\", \"%s\" ", obj_lbl, obj_val_lbl);
+  values = sprintf(#, " %g, %g, %g, %g, %d", obj_def_val, obj_minval, obj_maxval, obj_valstep, obj_scaling);
+  // Создает init-строку ---------------
+  obj_init_str = sprintf(#, "%s, %s, %s, %s, %s", idx_type_dir, coords, color, labels, values);
+  obj_init_str = sprintf(#, "%s.DW_New( %s );", obj_varname, obj_init_str);
+  obj_init_str; // return
+);
+
+//**********************************************************
+//-- Print ObjInitString, can be used in code --------------
+//**********************************************************
+function DevMenu.ObjInitStringToConsole()
+  local(obj_init_str)
+(  
+  obj_init_str = DevMenu.CreateObjInitString();
+  obj_init_str ? (
+    ShowConsoleMsg("\n");
+    ShowConsoleMsg(obj_init_str);
+  );
+);
+
+//**********************************************************
+//-- Apply current parameters to object --------------------
+//**********************************************************
+function DevMenu.Apply(obj*)
+  local(t)
+(
+  /* Применять Желательно только при изменениях, 
+  не накладно, но лучше добавить isChanged */
+  //-- Type, dir -------------
+  // Exchange w/h if obj dir changed
+  DevMenu.obj_dir != obj.dir ? (
+    t = DevMenu.obj_w; 
+    DevMenu.obj_w = DevMenu.obj_h; 
+    DevMenu.obj_h = t;
+  );
+  obj.type = DevMenu.obj_type;
+  obj.dir = DevMenu.obj_dir;
+  //-- Coords ----------------
+  obj.x = DevMenu.obj_x;
+  obj.y = DevMenu.obj_y;
+  obj.w = DevMenu.obj_w;
+  obj.h = DevMenu.obj_h; 
+  //-- Color -----------------
+  obj.r = DevMenu.obj_RR /255;
+  obj.g = DevMenu.obj_GG /255;
+  obj.b = DevMenu.obj_BB /255;
+  obj.a = DevMenu.obj_AA /255;
+  //--------------------------
+  obj.idx = DevMenu.obj_idx;
+  //-- Labels ----------------
+  // временные строки не очень красиво...пока так. 
+  obj.lbl = strcpy(#, DevMenu.obj_lbl);
+  obj.val_lbl = strcpy(#, DevMenu.obj_val_lbl);  
+  //-- Values ----------------
+  obj.def_val = DevMenu.obj_def_val;
+  obj.minval = DevMenu.obj_minval;
+  obj.maxval = DevMenu.obj_maxval;
+  obj.valstep = DevMenu.obj_valstep; 
+);
+
+
+//**********************************************************
+//-- Draw Dev Menu -----------------------------------------
+//**********************************************************
+function DevMenu.Draw()
+  instance(x,y,w,h, font, font_name, font_size, 
+           obj_x, obj_y, obj_w, obj_h)
+  local(ret)
+(
+  //-- Test Grid -----------------------
+  this.mouseRDown() ? showGrid = !showGrid;
+  showGrid ? TestGrid(x,y,w,h, gfx_texth, gfx_texth);
+  
+  //-- Obj act Rectangle -----
+  gfx_set(0.5,0.5,0.5,0.1); // obj rect color
+  gfx_rect(obj_x, obj_y, obj_w, obj_h, 0);
+  
+  //--------------------------
+  /* ВСЕ размеры завязаны на высоту шрифта! 
+  Параметры шрифта(font_name, font_size) - в INIT! */
+  gfx_setfont(font); // set DevMenu font 
+  
+  //-- Window ----------------
+  w = gfx_texth * 18; // menu wnd w
+  h = gfx_texth * 16; // menu wnd h
+  DevMenu.Window();
+  
+  //-- Obj Parameters  -------
+  DevMenu.ObjType(x + gfx_texth, y + gfx_texth*1.5);
+  DevMenu.ObjCoords(x + gfx_texth, y + gfx_texth*3);
+  DevMenu.ObjColor(x + gfx_texth*8, y + gfx_texth*3);
+  DevMenu.ObjValues(x + gfx_texth, y + gfx_texth*13);
+  DevMenu.ObjLabels(x + gfx_texth, y + gfx_texth*10);
+  
+  //--------------------------
+  this.mouseRDown() ? (
+    gfx_x = mouse_x; gfx_y = mouse_y;
+    ret = gfx_showmenu("Object InitString to Console|Create Gui File|Etc");
+    ret == 1 ? DevMenu.ObjInitStringToConsole();
+  );
+  
+);
+

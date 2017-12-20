@@ -1,0 +1,181 @@
+/* 
+   * Author: EUGEN27771
+   * Author URI: http://forum.cockos.com/member.php?u=50462
+   * Licence: GPL v3
+   * Version: 1.0
+   * NoIndex: true
+*/
+
+//**************************************************************************************************
+//*** Audio functions ******************************************************************************
+//**************************************************************************************************
+// -- DB2VAL - VAL2DB ----------------------------
+function DB2VAL(x)
+(
+  exp((x)*0.11512925464970228420089957273422);
+);
+//----------------------------
+function VAL2DB(x)
+  local(v)
+(
+  x < 0.0000000298023223876953125 ? (
+    -150; 
+  ) : (
+    v = log(x)*8.6858896380650365530225783783321;
+    v < -150 ? -150 : v;
+  );
+);
+
+//------------------------------------------------
+//-- Simple Filter -------------------------------
+//------------------------------------------------
+function FilterB.SetValues(type, FreqHz, samplerate)
+  local(sqr2, c, c2, csqr2, d)
+  instance(active, ampIn0, ampIn1, ampIn2, ampOut1, ampOut2,
+  dlyIn1, dlyIn2, dlyOut1, dlyOut2) //reset on change    
+( 
+  // пересмотреть акт. значения. LP тоже не должен заходить в ноль!
+  active = (type == 0 && FreqHz < 19999) || (type == 1 && FreqHz > 1);  
+  
+  active ? (
+    type ? (
+      // Hi Pass //
+      sqr2 = 1.414213562;
+      c = tan(($pi/samplerate) * FreqHz );
+      c2 = c * c;
+      csqr2 = sqr2 * c;
+      d = (c2 + csqr2 + 1);
+      ampIn0 = 1 / d;
+      ampIn1 = -(ampIn0 + ampIn0);
+      ampIn2 = ampIn0;
+      ampOut1 = (2 * (c2 - 1)) / d;
+      ampOut2 = (1 - csqr2 + c2) / d;
+    ) : (
+      // Low Pass //
+      sqr2 = 1.414213562;
+      c = 1 / tan(($pi/samplerate) * FreqHz );
+      c2 = c * c;
+      csqr2 = sqr2 * c;
+      d = (c2 + csqr2 + 1);
+      ampIn0 = 1 / d;
+      ampIn1 = ampIn0 + ampIn0;
+      ampIn2 = ampIn0;
+      ampOut1 = (2 * (1 - c2)) / d;
+      ampOut2 = (c2 - csqr2 + 1) / d;   
+    );
+  );
+  
+  // без сброса тянется хвост, на скриптах не подходит!
+  dlyIn1 = dlyIn2 = dlyOut1 = dlyOut2 = 0; //reset on change
+
+);
+
+//----------------------------
+// Filter in = input sample
+// Filter out = out sample
+function FilterB.Apply(in)
+  instance(active, ampIn0, ampIn1, ampIn2, ampOut1, ampOut2, dlyIn1, dlyIn2, dlyOut1, dlyOut2, out)
+(
+  out = in;
+  active ? (
+    out = (ampIn0 * in) + (ampIn1 * dlyIn1) + (ampIn2 * dlyIn2) - (ampOut1 * dlyOut1) - (ampOut2 * dlyOut2);
+    dlyOut2 = dlyOut1;
+    dlyOut1 = out;
+    dlyIn2 = dlyIn1;
+    dlyIn1 = in;
+  );
+  
+  out;
+);
+
+//------------------------------------------------
+// -- RMS follower(Test, need some fixes) --------
+//------------------------------------------------
+/* for JSFX variant
+function RMSFollower.SetValues(buf, rms_size_ms, samplerate)
+  local(last_rms_size)
+(
+  // samplerate can be different from the global srate if need
+  // rms_size_ms - max 1000 ms, change if need
+  this.buf = buf;
+  last_rms_size = this.rms_size;
+  this.rms_size = min( max(samplerate*rms_size_ms/1000, 1), samplerate);
+  last_rms_size != this.rms_size ? (
+      this.rms_sqr_sum = this.rms_bpos = 0;
+      memset(this.buf, 0, this.rms_size);
+  );
+);
+*/
+// for script
+function RMSFollower.SetValues(buf, rms_size_ms, samplerate)
+  local(last_rms_size)
+(
+  // samplerate can be different from the global srate if need
+  // rms_size_ms - max 1000 ms, change if need
+  this.buf = buf;
+  this.rms_size = floor(min(max(samplerate*rms_size_ms/1000, 1), samplerate));
+  this.rms_sqr_sum = 0;
+  this.rms_bpos = 0;
+  memset(this.buf, 0, this.rms_size); // clear
+);
+
+//----------------------------------------
+function RMSFollower.Apply(in)
+  instance(buf, rms_size, rms_sqr_sum, rms_bpos)
+(
+  rms_sqr_sum = max(rms_sqr_sum - buf[rms_bpos], 0) + (buf[rms_bpos] = sqr(in));
+  (rms_bpos+=1) >= rms_size ? rms_bpos=0;
+  sqrt(rms_sqr_sum/rms_size); // ret
+);
+
+//------------------------------------------------
+// -- Env follower -------------------------------
+//------------------------------------------------
+function EnvFollower.SetValues(attack_ms, release_ms, samplerate)
+(
+  this.ga = exp(-1/(samplerate*attack_ms/1000));
+  this.gr = exp(-1/(samplerate*release_ms/1000));
+  this.out = 0;
+);
+
+//------------------------------
+// Env in = input sample
+// Env retval = out = output envelope
+function EnvFollower.Apply(in)
+  instance(ga, gr, out)
+(
+  in = abs(in); // abs sample value
+  out < in ? out = in + ga*(out-in) : out = in + gr*(out-in); 
+);
+
+//------------------------------------------------
+// -- Simple Compressor --------------------------
+//------------------------------------------------
+//thresh_dB = comp threshold
+//ratio = X in form X : 1, must be num 1 ... max,
+//slope 0 = no compress, 1 = max compression
+function CompD.SetValues(thresh_dB, ratio)
+(
+  this.thresh_dB = thresh_dB;
+  this.thresh = 10^(thresh_dB/20);
+  this.ratio = ratio;
+  this.slope = 1 - 1/ratio; // slope
+);
+
+//------------------------------
+//Comp env = envelope 
+//Comp gain = gain multiplier
+//slope прим. к разнице в dB, поэтому преобразования
+function CompD.Apply(env)
+  instance(thresh_dB, thresh, slope, gain_dB, gain)
+(
+  gain = 1;
+  gain_dB = 0;
+  env > thresh ? (
+    gain_dB = slope * (thresh_dB - VAL2DB(env));
+    gain = DB2VAL(gain_dB);
+  ); 
+  gain; // comp out gain
+);
+
+

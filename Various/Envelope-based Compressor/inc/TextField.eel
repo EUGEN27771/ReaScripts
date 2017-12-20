@@ -1,0 +1,67 @@
+/* 
+   * Author: EUGEN27771
+   * Author URI: http://forum.cockos.com/member.php?u=50462
+   * Licence: GPL v3
+   * Version: 1.0
+   * NoIndex: true
+*/
+
+//----------------------------------------------------------
+//-- Simple TextField for Controls -------------------------
+//----------------------------------------------------------
+function TextField.Init(x,y,w,h, val)
+(
+  this.x = x; this.y = y; this.w = w; this.h = h; // coords
+  #this.val = val;
+  this.max_len = 64; // max symbols
+  this.blink = 0;
+  this.Apply = 0;
+);
+
+//--------------------------------------
+function TextField.GetKB()
+  instance(x,y,w,h, #val, str_len, blink, max_len)
+  local(str_len)
+(
+  gfx_char ? ( // gfx_char - global(можно сменить на арг. ф-и)
+    gfx_char == 27 || gfx_char == 13 ? ( // esc, enter
+      TextField.Apply = 1;
+    ) :
+    gfx_char == 8 ? (  // backspace
+      str_len = strlen(#val);
+      str_setlen(#val, max(str_len-1, 0)); 
+    ) : 
+    gfx_char > 31 && gfx_char < 127 ? (
+      //append = strlen(#val) or between (-0.5,0.0)
+      str_len < max_len ? str_setchar(#val, -0.25, gfx_char);
+    );
+
+  );
+  //-------------
+  mouse_down && !this.mouseIN() ? TextField.Apply = 1;
+   
+);
+
+//--------------------------------------
+function TextField.Draw()
+  instance(x,y,w,h, #val, blink, str_rx)
+  local(str_w, str_h)
+(
+  TextField.GetKB();
+  //--------------------------
+  gfx_set(0.9);
+  gfx_rect(x,y,w,h); // bg
+  gfx_set(0.5);
+  gfx_rect(x,y,w,h,0); // frame
+  //--------------------------
+  
+  str_w = str_h = 0;
+  gfx_measurestr(#val, str_w, str_h);
+  gfx_x = x + 5; gfx_y = y;
+  str_rx = gfx_x + min(w-10, str_w);
+  gfx_set(0);
+  gfx_drawstr(#val, 6, str_rx, y + h );
+  blink < 20 ? blink +=1 : blink = 0;
+  blink < 10 ? gfx_line(str_rx+1, y+2, str_rx+1, y+h-4); // v1
+
+);

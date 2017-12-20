@@ -1,0 +1,510 @@
+/* 
+   * Author: EUGEN27771
+   * Author URI: http://forum.cockos.com/member.php?u=50462
+   * Licence: GPL v3
+   * Version: 1.0
+   * NoIndex: true
+*/
+
+@import Mouse.eel
+@import TextField.eel
+@import DevMenu.eel
+
+//Модули и сам Скрипт будут дорабатываться и добавляться.
+//Пока лишь тестовая основа на простых элементах.
+
+//**************************************************************************************************
+//** MiniGui1-1 ************************************************************************************
+//**************************************************************************************************
+//--- Вынести math отдельно для всего!
+//--- some math functions ----
+function round(x)
+(
+  x < 0 ? ceil(x - 0.5) : floor(x + 0.5);
+);
+//----------------------------
+function roundstp(x, step)
+(
+  x < 0 ? ceil(x/step - 0.5)*step : floor(x/step + 0.5)*step;
+);
+//----------------------------
+function roundto(val, n)
+  local(shift)
+(
+  shift = pow(10, n);
+  round(val * shift) / shift;
+);
+
+//----------------------------
+function smval(val) 
+  local(smidge)
+( 
+  //try fix osx sprintf round
+  smidge = 2 ^ -52;
+  val + smidge*val;
+);
+
+//----------------------------
+function minmax(x, minv, maxv)
+(
+  min(max(x, minv), maxv); 
+);
+
+//******************************************************************************
+// scaling functions можно добавлять по образцу val_to_normval2,3 ... etc
+//******************************************************************************
+//-- Value from-to normval(linear) -------------------------
+function val_to_normval(val, minval, maxval) 
+(
+  (val - minval) / (maxval - minval); // ret norm value
+); 
+//----------------------------
+function normval_to_val(normval, minval, maxval) 
+(
+  minval + (maxval - minval) * normval; // ret value 
+);
+
+//-- Value from-to normval(log) ----------------------------
+function val_to_normval1(val, minval, maxval)
+  local(offset, minv, maxv, scale)
+(  // I use offset if minval<1 
+  minval < 1 ? (offset = 1 - minval) : offset = 0;
+  minv = log(minval + offset); 
+  maxv = log(maxval + offset);
+  scale = maxv - minv;
+  (log(val + offset) - minv) / scale; // ret norm value
+);
+//----------------------------
+function normval_to_val1(normval, minval, maxval)
+  local(offset, minv, maxv, scale)
+( // I use offset if minval<1
+  minval < 1 ? (offset = 1 - minval) : offset = 0;
+  minv = log(minval + offset); 
+  maxv = log(maxval + offset);
+  scale = maxv - minv;
+  exp(minv + scale*normval) - offset; // ret value
+); 
+
+//----------------------------------------------------------
+//-- Obj scaling val<>norm_val, add new if need ------------
+//----------------------------------------------------------
+function DW_val_to_normval(val)
+  instance(minval, maxval, scaling) 
+  local(normval)
+(
+  scaling == 0 ? normval = val_to_normval(val, minval, maxval);
+  scaling == 1 ? normval = val_to_normval1(val, minval, maxval);
+  //scaling == 2 ? normval = val_to_normval2(val, minval, maxval);
+  //scaling == etc....
+  //--retval -------
+  //normval; // v1 no ranged
+  minmax(normval, 0, 1); // v2(пробуем здесь, может это полезнее)
+);
+//----------------------------
+function DW_normval_to_val(norm_val)
+  instance(minval, maxval, scaling)
+  local(val)
+(
+  scaling == 0 ? val = normval_to_val(norm_val, minval, maxval);
+  scaling == 1 ? val = normval_to_val1(norm_val, minval, maxval);
+  //scaling == 2 ? val = normval_to_val2(norm_val, minval, maxval);
+  //scaling == etc....
+  //--retval -------
+  //val; // v1 no ranged
+  minmax(val, minval, maxval); // v2(пробуем здесь, может это полезнее) 
+);
+
+//-- Value from-to JS --------------------------------------
+/* 
+//Update from/to JS need for link parameters with JS sliders.
+//Autamation, presets etc. Use only for JSFX!
+//----------------------------
+function DW_value_from_JS()
+  instance(idx, val, normval) 
+( // Update values - from JS
+  idx < 65 && val != slider(idx) ? (
+    val = slider(idx); // set value
+    normval = this.DW_val_to_normval(val); // set norm
+    1; // if changed from js(host automation etc)
+  );
+);
+//----------------------------
+function DW_value_to_JS()
+  instance(idx, val)
+( // Update values - to JS
+  idx < 65 && val != slider(idx) ? ( // V_to+=1; //test
+    slider(idx) = val;
+    slider_automate(2^(idx-1));
+  ); 
+);
+ */
+
+//----------------------------------------------------------
+//-- Set obj parameters ------------------------------------
+//----------------------------------------------------------
+//-- Set Coordinates -----------------------------
+function objSetCoords(x,y,w,h)
+(
+  this.x = x; this.y = y; this.w = w; this.h = h;
+);
+
+//-- Set Color -----------------------------------
+function objSetColor(r,g,b,a)
+(
+  this.r = r; this.g = g; this.b = b; this.a = a;
+);
+
+//-- Set DW obj val, normval, regard val_step ----
+function DW_SetVal(new_val)
+  instance(val, minval, maxval, valstep, normval)
+(
+  new_val = minmax(new_val, minval, maxval);
+  val = roundstp(new_val, valstep);
+  normval = this.DW_val_to_normval(val); // correct(steped) normval
+  //this.DW_value_to_JS(); // only js 
+);
+
+//----------------------------------------------------------
+//-- Change value on mouse drag ----------------------------
+//----------------------------------------------------------
+function DW_Vdrag()
+  instance(type, x,y,w,h, hnd_sz, tmp_norm)
+(   
+  mouse_Ctrl ? (
+    tmp_norm += (mouse_last_y - mouse_y) / 2000; // K = 2000 Precise 
+  ) : (
+    type == "Slider" ? ( // Slider
+      tmp_norm = (y + h - hnd_sz/2 - mouse_y)/(h - hnd_sz); // For Sliders
+    ) : (
+      tmp_norm += (mouse_last_y - mouse_y) / 200; // K = 200 For Knobs
+    );
+  );
+
+  this.DW_normval_to_val(tmp_norm); // retval
+);
+
+//----------------
+function DW_Hdrag()
+  instance(type, x,y,w,h, hnd_sz, tmp_norm)
+(   
+  mouse_Ctrl ? (
+    tmp_norm += (mouse_x - mouse_last_x) / 2000; // K = 2000 Precise 
+  ) : (
+    type == "Slider" ? ( // Slider
+      tmp_norm = (mouse_x - x - hnd_sz/2)/(w - hnd_sz); // For Sliders
+    ) : (
+      tmp_norm += (mouse_x - mouse_last_x) / 200; // K = 200 For Knobs
+    );
+  );
+
+  this.DW_normval_to_val(tmp_norm); // retval
+);
+
+//-- Call V, H drag depending of dir ---
+function DW_drag()
+(
+  // retval = DW_Vdrag() or DW_Hdrag() dep of obj dir
+  this.dir == "V" ? this.DW_Vdrag() : this.DW_Hdrag();
+);
+
+
+//----------------------------------------------------------
+//-- DW Get mouse function ---------------------------------
+//----------------------------------------------------------
+function DW_GetMouse()
+  instance(type, dir, val, def_val, valstep, normval, tmp_norm, isCaptured, isChanged, isReleased, val_lbl)
+  local(new_val)
+(
+  isChanged = isReleased = 0;
+  new_val = val;
+  //----------------
+  isCaptured && !(mouse_cap&1) ? (
+    isCaptured = 0;
+    isReleased = 1;
+  );
+  //----------------
+  this.mouseDown() ? (
+    tmp_norm = normval; // tmp non-stepped!
+    isCaptured = 1;
+  );
+  //----------------
+  this.mouseDblClick() ? (
+    new_val = def_val;
+    isChanged = 1; 
+  );
+  //----------------
+  isCaptured ? (
+    new_val = this.DW_drag();
+    isChanged = 1; 
+  );
+  //----------------
+  this.val_lbl.mouseClick() ? (
+   !this.TextField.isActive ? (
+    TextField.Init(val_lbl.x, val_lbl.y, val_lbl.w, val_lbl.h, sprintf(#,"%g", smval(val)) );
+    this.TextField.isActive = 1;
+    );
+  );
+  //----------------
+  this.TextField.isActive && TextField.Apply ? (
+    this.TextField.isActive = 0;
+    match("%f", #TextField.val, new_val) ? isChanged = isReleased = 1;
+  );
+  
+  //----------------
+  (isChanged = isChanged && abs(new_val - val) >= valstep) ? (
+    this.DW_SetVal(new_val); // set val if changed
+  );
+  
+  //-- upd from JS(JS only!) ---------
+  //!isCaptured ? (
+    //this.DW_value_from_JS() ? isChanged = 1;
+  //);
+  
+);
+  
+//------------------------------------------------
+//-- Draw labels --------------------------------- 
+//------------------------------------------------
+function DW_Hlabels()
+  local(str_w, str_h, val_str)
+  instance(r,g,b,a, x,y,w,h, lbl, val, val_lbl)
+(
+  gfx_setfont(gui.font1);
+  gfx_set(r,g,b,a);
+  // -- label ----------------
+  gfx_x = x - gfx_texth/2; 
+  gfx_y = y;
+  gfx_drawstr(lbl, 262, gfx_x, gfx_y + h); // draw lbl
+  // -- val label ------------
+  val_lbl.w = gfx_texth*4;
+  val_lbl.h = gfx_texth*1.25;
+  val_lbl.x = gfx_x = x + w + gfx_texth/2; 
+  val_lbl.y = gfx_y = y;
+  val_str = sprintf(#, "%g %s", smval(val), val_lbl); // "%g" - variant 
+  gfx_drawstr(val_str, 260, gfx_x, gfx_y + h); // draw val + val_lbl
+);
+
+//--------------------------------------
+function DW_Vlabels()
+  local(str_w, str_h, val_str)
+  instance(r,g,b,a, x,y,w,h, lbl, val, val_lbl)
+(
+  gfx_setfont(gui.font1);
+  gfx_set(r,g,b,a);
+  // -- label ----------------
+  gfx_x = x + w/2;
+  gfx_y = y + h;
+  gfx_drawstr(lbl, 261, gfx_x, gfx_y + gfx_texth); // draw lbl
+  // -- val label ------------
+  val_lbl.w = gfx_texth*4; 
+  val_lbl.h = gfx_texth*1.25;
+  val_lbl.x = gfx_x = x + (w - val_lbl.w)/2; 
+  val_lbl.y = gfx_y = y - gfx_texth;
+  val_str = sprintf(#, "%g %s", smval(val), val_lbl);  // "%g" - variant
+  gfx_drawstr(val_str, 261, gfx_x + val_lbl.w, y); // draw val + val_lbl
+);
+//------------------------------------------------
+//-- H-slider drawing ----------------------------
+//------------------------------------------------
+function sldrH_image()
+  instance(x,y,w,h, r,g,b,a, hnd_sz, normval)
+  local(sx,sy,sw,sh, v, xv)
+(  
+  hnd_sz = 14; // handle size(sliders only)
+  sh = 4;              // sliderway h
+  sy = y + (h - sh)/2; // sliderway y
+  sx = x + hnd_sz/2;   // sliderway x
+  sw = w - hnd_sz;     // sliderway w
+  v = sw * normval;
+  xv = sx + v;
+  //----------------
+  gfx_set(r,g,b,a);
+  //gfx_rect(x,y,w,h,0); // slider active rect
+  gfx_rect(sx, sy, sw, sh, 0); // sliderway
+  //----------------
+  gfx_set(r,g,b,a-0.1);
+  gfx_rect(sx, sy, v, sh, 1);
+  gfx_set(r,g,b,a); 
+  gfx_circle(xv, y + h/2, hnd_sz/2, 1, 1);  
+);
+
+//------------------------------------------------
+//-- V-slider drawing ----------------------------
+//------------------------------------------------
+// Вместо этого можно просто вставить картинку
+function sldrV_image()
+  instance(x,y,w,h, r,g,b,a, hnd_sz, normval)
+  local(sx,sy,sw,sh, v, yv)
+(  
+  hnd_sz = 14; // handle size(sliders only)
+  sw = 4;              // sliderway w
+  sx = x + (w - sw)/2; // sliderway x
+  sy = y + hnd_sz/2;   // sliderway y
+  sh = h - hnd_sz;     // sliderway h
+  v = round(sh * normval);
+  yv = sy + sh - v;
+  //----------------
+  gfx_set(r,g,b,a);
+  //gfx_rect(x,y,w,h,0); // slider active rect
+  gfx_rect(sx, sy, sw+1, sh, 0); // sliderway
+  //----------------
+  gfx_set(r,g,b,a-0.1);
+  gfx_rect(sx, yv + hnd_sz/2, sw+1, v - hnd_sz/2, 1);
+  gfx_set(r,g,b,a);
+  gfx_circle(sx + sw/2, yv, hnd_sz/2, 1, 1);  
+);
+
+//------------------------------------------------
+//-- Knob drawing --------------------------------
+//------------------------------------------------
+// Вместо этого можно просто вставить картинку
+function knob_image()
+  instance(x,y,w,h, r,g,b,a, normval)
+  local(cx, cy, rds, offs, vr, angmax, ang1, ang2, i) 
+( 
+   cx = x + w/2; 
+   cy = y + h/2; 
+   rds = w/2;
+   angmax = 2.75*$pi; // max
+   offs = 1.25 * $pi; //$pi + $pi*0.25;
+   vr = (1.5 * $pi) * normval;
+   ang1 = offs - 0.01; 
+   ang2 = offs + vr;
+   //----------------------
+   gfx_set(0.12);
+   gfx_circle(cx, cy, rds-7, 1);    
+   //----------------------
+   gfx_set(0.15);
+   i=0;
+   loop(5, 
+     gfx_arc(cx, cy, rds-i,  ang1, angmax, 1);
+     i+=0.5;
+   );
+   //----------------------
+   gfx_set(r,g,b,a); 
+   i=0;
+   loop(5, 
+     gfx_arc(cx, cy, rds-i,  ang1, ang2, 1);
+     i+=0.5;
+   );
+);
+
+
+//------------------------------------------------------------------------------
+//-- Create Drag Widget(slider, knob etc) --------------------------------------
+//------------------------------------------------------------------------------
+function DW_New(idx, type, dir, x,y,w,h, r,g,b,a, lbl, val_lbl, val, minval, maxval, valstep, scaling)
+(
+  this.type = type;
+  this.dir = dir; 
+  this.objSetCoords(x,y,w,h);
+  this.objSetColor(r,g,b,a);
+  //--------------------------
+  this.lbl = lbl;         // label, for ex. "Threshold", "Freq" etc
+  this.val_lbl = val_lbl; // value label, for ex. "dB", "Hz" etc
+  this.idx = idx;
+  this.minval = minval;  
+  this.maxval = maxval;
+  this.valstep = valstep;
+  this.scaling = scaling;
+  this.DW_SetVal(val); // set values
+  this.def_val = this.val;
+);   
+
+
+//----------------------------------------------------------
+//-- Draw Drag widget --------------------------------------
+//----------------------------------------------------------
+//-- V Slider ------
+function sldrH_Draw()
+(
+  this.sldrH_image(); this.DW_Hlabels();
+);
+//-- H Slider ------
+function sldrV_Draw()
+(
+  this.sldrV_image(); this.DW_Vlabels();
+);
+//-- Knob ----------
+function knob_Draw()
+(
+  this.knob_image(); this.DW_Vlabels();
+);
+
+
+//--------------------------------------
+//-- Main DW draw function -------------
+//--------------------------------------
+function DW_Draw()
+(
+  this.idx ? (  // need valid idx(see jsl)
+    this.DW_GetMouse();
+    DevMode ? ( // DevMenu for obj
+      this.mouseClick() ? DevMenu.Init(this);  
+      DevMenu.isActive && DevMenu.obj_idx == this.idx ? DevMenu.Apply(this);
+    );
+  );
+  
+  this.idx ? ( // Draw
+    this.type=="Slider" ? (
+      this.dir=="V" ? this.sldrV_Draw() : this.sldrH_Draw();
+    ) : (
+      this.type=="Knob" ? (
+        this.knob_Draw();
+      );
+    );
+  );
+  
+  this.TextField.isActive ? TextField.Draw();
+
+);
+
+
+//------------------------------------------------------------------------------
+//-- Create CheckBox -----------------------------------------------------------
+//------------------------------------------------------------------------------
+function CheckBox_New(idx, x,y,w,h, r,g,b,a,  lbl, val)
+(
+  this.idx = idx;
+  this.objSetCoords(x,y,w,h);
+  this.objSetColor(r,g,b,a);
+  this.val = val;
+  this.lbl = lbl;
+);
+
+
+//----------------------------------------------------------
+//-- Draw CheckBox -----------------------------------------
+//----------------------------------------------------------
+function CheckBox_Draw()
+  instance(x,y,w,h, r,g,b,a, lbl, val, isChanged)
+(
+  isChanged = 0;
+  this.mouseDown() ? (
+    val = !val;
+    isChanged = 1;
+  ); 
+  
+  //--------------------------
+  DevMode ? ( // DevMenu for obj
+    this.mouseClick() ? DevMenu.Init(this);  
+    DevMenu.isActive && DevMenu.obj_idx == this.idx ? DevMenu.Apply(this);
+  );
+  
+  //--------------------------
+  gfx_setfont(gui.font1);
+  gfx_set(r,g,b,a);
+  //----------------
+  val ? ( 
+    gfx_x = x + (w - gfx_texth*0.5)/2;
+    gfx_y = y + (h - gfx_texth)/2;
+    gfx_drawchar(10004);
+  );
+  //----------------
+  gfx_x = x + w + gfx_texth*0.5;
+  gfx_y = y;
+  gfx_drawstr(lbl, 260, gfx_x, gfx_y + h);
+  gfx_a = 0.15; // field frame col alfa
+  gfx_rect(x, y, w, h, 0); // field frame
+  
+);
