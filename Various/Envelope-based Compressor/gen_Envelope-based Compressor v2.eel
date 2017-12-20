@@ -4,8 +4,8 @@
    * Author: EUGEN27771
    * Author URI: http://forum.cockos.com/member.php?u=50462
    * Licence: GPL v3
-   * Version: 2.1
-   * Provides: inc/*.eel
+   * Version: 2.11
+   * Provides: inc/*.{eel}
 */
 
 @import inc/AudioFunctions.eel
