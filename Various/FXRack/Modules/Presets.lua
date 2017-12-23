@@ -1,9 +1,10 @@
-
--- @version 1.00
--- @author EUGEN27771
--- @website http://forum.cockos.com/member.php?u=50462
--- @noindex
-
+--[[
+  * Presets(module)
+  * Version: 1.00
+  * Author: EUGEN27771
+  * Website: http://forum.cockos.com/member.php?u=50462
+  * NoIndex: true
+--]]
 
 -- Load some modules -----------------
 local File = require "Modules.File"

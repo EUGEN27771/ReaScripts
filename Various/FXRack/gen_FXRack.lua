@@ -1,13 +1,12 @@
 --[[
--- @description FXRack
--- @version 1.00
--- @author EUGEN27771
--- @website http://forum.cockos.com/member.php?u=50462
--- @provides 
+  * Description: FXRack
+  * Version: 1.00
+  * Author: EUGEN27771
+  * Website: http://forum.cockos.com/member.php?u=50462
+  * Provides: 
       Modules/*.{lua}
       Images/*.{png}
-      JSUtilities/(Split)RackSplitter > JSUtilities/(Split)RackSplitter
-      JSUtilities/(Mix)RackMixer > JSUtilities/(Mix)RackMixer
+      JSUtilities
 --]]
 
 
