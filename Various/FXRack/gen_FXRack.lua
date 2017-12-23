@@ -4,7 +4,7 @@
   * Author: EUGEN27771
   * Website: http://forum.cockos.com/member.php?u=50462
   * Provides: 
-      Modules/*.{lua}
+      Modules
 --]]
 
 
