@@ -1,10 +1,10 @@
-
--- Description: File(module)
--- Version: 1.0
--- Author: EUGEN27771
--- Website: http://forum.cockos.com/member.php?u=50462
--- NoIndex: true
-
+--[[
+  Description: File(module)
+  Version: 1.00
+  Author: EUGEN27771
+  Website: http://forum.cockos.com/member.php?u=50462
+  NoIndex: true
+--]]
 
 --[[
 ==================================
