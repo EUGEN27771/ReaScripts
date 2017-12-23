@@ -5,9 +5,6 @@
   * Website: http://forum.cockos.com/member.php?u=50462
   * Provides: 
       Modules/*.{lua}
-      Images/*.{png}
-      FXRack/JSUtilities/(Split)RackSplitter > JSUtilities/(Split)RackSplitter
-      FXRack/JSUtilities/(Mix)RackMixer > JSUtilities/(Mix)RackMixer
 --]]
 
 
