@@ -6,8 +6,6 @@
   * Provides: 
       Modules/*.{lua}
       Images/*.{png}
-      JSUtilities
-      
 --]]
 
 
