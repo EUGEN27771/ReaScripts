@@ -6,7 +6,8 @@
   * Provides: 
       Modules/*.{lua}
       Images/*.{png}
-      JSUtilities > JSUtilities
+      JSUtilities/(Split)RackSplitter > JSUtilities/(Split)RackSplitter
+      JSUtilities/(Mix)RackMixer > JSUtilities/(Mix)RackMixer
 --]]
 
 
