@@ -4,7 +4,9 @@
   * Author: EUGEN27771
   * Website: http://forum.cockos.com/member.php?u=50462
   * Provides: 
-      Modules/FXChain.lua
+      Modules/*.{lua}
+      Images/*.{png}
+      JSUtilities
 --]]
 
 
