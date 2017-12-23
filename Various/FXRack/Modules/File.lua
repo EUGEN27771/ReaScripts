@@ -1,9 +1,9 @@
 
--- @description File(module)
--- @version 1.0
--- @author EUGEN27771
--- @website http://forum.cockos.com/member.php?u=50462
--- @noindex
+-- Description: File(module)
+-- Version: 1.0
+-- Author: EUGEN27771
+-- Website: http://forum.cockos.com/member.php?u=50462
+-- NoIndex: true
 
 
 --[[
