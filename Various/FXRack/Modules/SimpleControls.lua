@@ -1,7 +1,4 @@
 -- SimpleControls(module)
--- @version: 1.00
--- @author: EUGEN27771
--- @website: http://forum.cockos.com/member.php?u=50462
 -- @noindex
 
 ------------------------------------------------------------
