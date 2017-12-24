@@ -3,8 +3,8 @@
 -- @author: EUGEN27771
 -- @website: http://forum.cockos.com/member.php?u=50462
 -- @provides: 
---   {Images,Modules,JSUtilities}/*
-
+--   {Images,Modules}/*
+--   [effect] JSUtilities/*
 
 
 --[[
