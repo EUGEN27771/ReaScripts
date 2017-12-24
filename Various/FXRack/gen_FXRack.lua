@@ -1,5 +1,5 @@
 -- @description: FXRack
--- @version: 1.02
+-- @version: 1.0
 -- @author: EUGEN27771
 -- @website: http://forum.cockos.com/member.php?u=50462
 -- @provides: 
