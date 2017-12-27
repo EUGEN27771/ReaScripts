@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="EUGENE27771-ReaScripts" commit="8fce65589f555881d0726fc3b578f2b3ee57cf39">
+<index version="1" name="EUGENE27771-ReaScripts" commit="3a9efe22f50dbdad0d34f566bcaf130abeee2651">
   <category name="FX">
     <reapack name="gen_Save Preset for last touched FX.lua" type="script" desc="Save_FX_Preset">
       <version name="1.02" author="EUGEN27771" time="2016-06-24T22:51:03Z">
@@ -268,6 +268,23 @@
         <source file="Modules/Presets.lua">https://github.com/EUGEN27771/ReaScripts/raw/8fce65589f555881d0726fc3b578f2b3ee57cf39/Various/FXRack/Modules/Presets.lua</source>
         <source file="Modules/RackSplitMix.lua">https://github.com/EUGEN27771/ReaScripts/raw/8fce65589f555881d0726fc3b578f2b3ee57cf39/Various/FXRack/Modules/RackSplitMix.lua</source>
         <source file="Modules/SimpleControls.lua">https://github.com/EUGEN27771/ReaScripts/raw/8fce65589f555881d0726fc3b578f2b3ee57cf39/Various/FXRack/Modules/SimpleControls.lua</source>
+      </version>
+      <version name="1.01" author="EUGEN27771" time="2017-12-27T22:12:12Z">
+        <source main="main">https://github.com/EUGEN27771/ReaScripts/raw/3a9efe22f50dbdad0d34f566bcaf130abeee2651/Various/FXRack/gen_FXRack.lua</source>
+        <source file="Images/BG_PatchWork.png">https://github.com/EUGEN27771/ReaScripts/raw/3a9efe22f50dbdad0d34f566bcaf130abeee2651/Various/FXRack/Images/BG_PatchWork.png</source>
+        <source file="Images/button_phase_22x22x2.png">https://github.com/EUGEN27771/ReaScripts/raw/3a9efe22f50dbdad0d34f566bcaf130abeee2651/Various/FXRack/Images/button_phase_22x22x2.png</source>
+        <source file="Images/button_power_17x18x2.png">https://github.com/EUGEN27771/ReaScripts/raw/3a9efe22f50dbdad0d34f566bcaf130abeee2651/Various/FXRack/Images/button_power_17x18x2.png</source>
+        <source file="Images/button_solo_22x22x2.png">https://github.com/EUGEN27771/ReaScripts/raw/3a9efe22f50dbdad0d34f566bcaf130abeee2651/Various/FXRack/Images/button_solo_22x22x2.png</source>
+        <source file="Images/button_summing_26x17x2.png">https://github.com/EUGEN27771/ReaScripts/raw/3a9efe22f50dbdad0d34f566bcaf130abeee2651/Various/FXRack/Images/button_summing_26x17x2.png</source>
+        <source file="Images/knob_pan_28x28x127.png">https://github.com/EUGEN27771/ReaScripts/raw/3a9efe22f50dbdad0d34f566bcaf130abeee2651/Various/FXRack/Images/knob_pan_28x28x127.png</source>
+        <source file="Images/knob_vol_28x28x127.png">https://github.com/EUGEN27771/ReaScripts/raw/3a9efe22f50dbdad0d34f566bcaf130abeee2651/Various/FXRack/Images/knob_vol_28x28x127.png</source>
+        <source file="JSUtilities/(Mix)RackMixer">https://github.com/EUGEN27771/ReaScripts/raw/3a9efe22f50dbdad0d34f566bcaf130abeee2651/Various/FXRack/JSUtilities/(Mix)RackMixer</source>
+        <source file="JSUtilities/(Split)RackSplitter">https://github.com/EUGEN27771/ReaScripts/raw/3a9efe22f50dbdad0d34f566bcaf130abeee2651/Various/FXRack/JSUtilities/(Split)RackSplitter</source>
+        <source file="Modules/FXChain.lua">https://github.com/EUGEN27771/ReaScripts/raw/3a9efe22f50dbdad0d34f566bcaf130abeee2651/Various/FXRack/Modules/FXChain.lua</source>
+        <source file="Modules/File.lua">https://github.com/EUGEN27771/ReaScripts/raw/3a9efe22f50dbdad0d34f566bcaf130abeee2651/Various/FXRack/Modules/File.lua</source>
+        <source file="Modules/Presets.lua">https://github.com/EUGEN27771/ReaScripts/raw/3a9efe22f50dbdad0d34f566bcaf130abeee2651/Various/FXRack/Modules/Presets.lua</source>
+        <source file="Modules/RackSplitMix.lua">https://github.com/EUGEN27771/ReaScripts/raw/3a9efe22f50dbdad0d34f566bcaf130abeee2651/Various/FXRack/Modules/RackSplitMix.lua</source>
+        <source file="Modules/SimpleControls.lua">https://github.com/EUGEN27771/ReaScripts/raw/3a9efe22f50dbdad0d34f566bcaf130abeee2651/Various/FXRack/Modules/SimpleControls.lua</source>
       </version>
     </reapack>
   </category>
