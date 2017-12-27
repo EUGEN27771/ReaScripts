@@ -1,4 +1,4 @@
-﻿desc:FXRack 1.0
+desc:FXRack 1.01
 /*
 Short Description:
 CP is channel pair, aka chain(1/2,3/4 etc)
@@ -113,12 +113,11 @@ function mouseDown(x,y,w,h) ( mouse_down && mouseINrect(x,y,w,h); );
 
 //-- Set RRGGBB color ------------------
 function SetRGB(RGB)
-  local(r,g,b)
 (
-  r = (RGB & 0xFF0000) / 16777216; // >> 16 /256
-  g = (RGB & 0x00FF00) / 65536;    // >> 8  /256
-  b = (RGB & 0x0000FF) / 256;      // >> 0  /256
-  gfx_set(r,g,b,1);
+  gfx_r = (RGB & 0xFF0000) / 16711680; // 256*256*255
+  gfx_g = (RGB & 0x00FF00) / 65280; // 256*255
+  gfx_b = (RGB & 0x0000FF) / 255; // 255
+  gfx_a = 1
 );
 
 //--------------------------------------

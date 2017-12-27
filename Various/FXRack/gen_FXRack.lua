@@ -1,5 +1,5 @@
 -- @description FXRack
--- @version 1.00
+-- @version 1.01
 -- @author EUGEN27771
 -- @website http://forum.cockos.com/member.php?u=50462
 -- @provides {Images,Modules,JSUtilities}/*
@@ -63,7 +63,7 @@ local Splitter = SplitMix.Splitter
 BG = gfx.loadimg(0, script_path .. "/Images/BG_PatchWork.png" ) -- BG(slot 0)
 ------------------------------
 local Rack = {}   -- Rack Main table
-Rack.version = "FXRack 1.0" -- version(в JS указ. desk:version)
+Rack.version = "FXRack 1.01" -- version(в JS указ. desk:version)
 -- JSFX Utilities names ------
 Rack.JSSplitter = "(Split)RackSplitter"
 Rack.JSMixer = "(Mix)RackMixer"
@@ -104,10 +104,10 @@ end
 
 ----------------------------------------
 function SetRGB(RGB, a)
-  local r = (RGB & 0xFF0000) / 16777216;
-  local g = (RGB & 0x00FF00) / 65536;
-  local b = (RGB & 0x0000FF) / 256;
-  gfx.set(r,g,b, a or 1);
+  gfx.r = (RGB & 0xFF0000) / 16711680 -- 256*256*255
+  gfx.g = (RGB & 0x00FF00) / 65280 -- 256*255
+  gfx.b = (RGB & 0x0000FF) / 255 -- 255
+  gfx.a = a or 1
 end
 
 --------------------------------------------------------------------------------
