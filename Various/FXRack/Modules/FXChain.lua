@@ -145,7 +145,8 @@ function FXChain.Get(track)
   fxs = {}
   e = e - 6 -- sub "BYPASS" length
   for i = 1, fx_cnt do -- get fx_chunks
-    s, e, fx_chunk = track_chunk:find("^(BYPASS %d %d %d\n.-WAK %d\n)", e + 1)
+    --s, e, fx_chunk = track_chunk:find("^(BYPASS %d %d %d\n.-WAK %d\n)", e + 1) -- reaper v5
+    s, e, fx_chunk = track_chunk:find("^(BYPASS %d %d %d\n.-WAK %d %d\n)", e + 1) -- reaper v6
     if fx_chunk then fxs[i] = fx_chunk else return end
   end
   --------
